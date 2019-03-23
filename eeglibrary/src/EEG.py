@@ -1,6 +1,7 @@
 import copy
 import pickle
 import numpy as np
+import scipy
 
 
 FILE_FORMAT = ['.mat']
@@ -21,7 +22,7 @@ class EEG:
     def __init__(self, values, channel_list, len_sec, sr, header=None):
         self.values = values
         self.channel_list = channel_list
-        self.len_sec = len_sec
+        self.len_sec = float(len_sec)
         self.sr = int(sr)
         self.header = header
 
@@ -82,3 +83,9 @@ class EEG:
             splitted_eegs.append(eeg)
 
         return splitted_eegs
+
+    def resample(self, num_rsmpl):
+        resampled = np.zeros((len(self.channel_list), int(num_rsmpl * self.len_sec)))
+        for i in range(len(self.channel_list)):
+            resampled[i, :] = scipy.signal.resample(self.values[i], int(num_rsmpl * self.len_sec))
+        return resampled

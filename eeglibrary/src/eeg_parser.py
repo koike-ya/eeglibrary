@@ -1,6 +1,9 @@
 from eeglibrary.src import eeg_loader
+import eeglibrary
 import numpy as np
 import scipy.signal
+import librosa
+import torch
 
 
 windows = {'hamming': scipy.signal.hamming, 'hann': scipy.signal.hann, 'blackman': scipy.signal.blackman,
@@ -9,10 +12,10 @@ windows = {'hamming': scipy.signal.hamming, 'hann': scipy.signal.hann, 'blackman
 
 class EEGParser:
     def __init__(self, eeg_conf, spect=False, normalize=False, augment=False):
-        self.mat_col = eeg_conf['mat_col']
-        self.sample_rate = eeg_conf['sample_rate']
-        self.spect = spect
+        self.sr = eeg_conf['sample_rate']
+        self.spect = eeg_conf['spect']
         if self.spect:
+            # self.sr = eeg_conf['window_stride']
             self.window_stride = eeg_conf['window_stride']
             self.window_size = eeg_conf['window_size']
             self.window = windows.get(eeg_conf['window'], windows['hamming'])
@@ -20,11 +23,39 @@ class EEGParser:
         self.augment = augment
 
     def parse_eeg(self, eeg_path) -> np.array:
-        if self.augment:
-            raise NotImplementedError
+        if eeg_path[-4:] == '.pkl':
+            eeg = eeglibrary.EEG.load_pkl(eeg_path)
         else:
             eeg = eeg_loader.from_mat(eeg_path, mat_col='')
-            eegs = eeg.split(self.wave_split_sec)
-            y = [eeg.split(self.window_size, self.window_stride) for eeg in eegs]
+
+        if self.augment:
+            raise NotImplementedError
+
+        if self.spect:
+            y = self.to_spect(eeg)
+        else:
+            y = torch.FloatTensor(eeg.values).view(1, eeg.values.shape[0], eeg.values.shape[1])
 
         return y
+
+    def to_spect(self, eeg):
+        # n_fft = int(self.sr * self.window_size)
+        n_fft = int(eeg.sr * self.window_size)
+        win_length = n_fft
+        hop_length = int(eeg.sr * self.window_stride)
+        spect_tensor = torch.Tensor()
+        # STFT
+        for i in range(len(eeg.channel_list)):
+            y = eeg.values[i].astype(float)
+            D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
+                             win_length=win_length, window=self.window)
+            spect, phase = librosa.magphase(D)
+            spect = torch.FloatTensor(spect)
+            if self.normalize:
+                mean = spect.mean()
+                std = spect.std()
+                spect.add_(-mean)
+                spect.div_(std)
+            spect_tensor = torch.cat((spect_tensor, spect.view(1, spect.size(0), -1)), 0)
+
+        return spect_tensor
