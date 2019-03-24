@@ -11,7 +11,7 @@ windows = {'hamming': scipy.signal.hamming, 'hann': scipy.signal.hann, 'blackman
 
 
 class EEGParser:
-    def __init__(self, eeg_conf, spect=False, normalize=False, augment=False):
+    def __init__(self, eeg_conf, normalize=False, augment=False):
         self.sr = eeg_conf['sample_rate']
         self.spect = eeg_conf['spect']
         if self.spect:
@@ -31,6 +31,10 @@ class EEGParser:
         if self.augment:
             raise NotImplementedError
 
+        if self.sr != eeg.sr:
+            eeg.values = eeg.resample(self.sr)
+            eeg.sr = self.sr
+
         if self.spect:
             y = self.to_spect(eeg)
         else:
@@ -39,7 +43,6 @@ class EEGParser:
         return y
 
     def to_spect(self, eeg):
-        # n_fft = int(self.sr * self.window_size)
         n_fft = int(eeg.sr * self.window_size)
         win_length = n_fft
         hop_length = int(eeg.sr * self.window_stride)

@@ -84,8 +84,8 @@ class EEG:
 
         return splitted_eegs
 
-    def resample(self, num_rsmpl):
-        resampled = np.zeros((len(self.channel_list), int(num_rsmpl * self.len_sec)))
+    def resample(self, n_resample) -> np.array([]):
+        resampled = np.zeros((len(self.channel_list), int(n_resample * self.len_sec)))
         for i in range(len(self.channel_list)):
-            resampled[i, :] = scipy.signal.resample(self.values[i], int(num_rsmpl * self.len_sec))
+            resampled[i, :] = scipy.signal.resample(self.values[i], int(n_resample * self.len_sec))
         return resampled

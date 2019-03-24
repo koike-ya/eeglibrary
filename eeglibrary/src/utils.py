@@ -2,9 +2,11 @@ from eeglibrary.src.eeg_loader import from_mat
 
 
 def common_eeg_setup(eeg_path='', mat_col=''):
-    eeg_conf = dict(window_size=0.1,
-                    window_stride=0.1,
+    eeg_conf = dict(spect=True,
+                    window_size=1.0,
+                    window_stride=1.0,
                     window='hamming',
+                    sample_rate=1500,
                     noise_dir=None,
                     noise_prob=0.4,
                     noise_levels=(0.0, 0.5))

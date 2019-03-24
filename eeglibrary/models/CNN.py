@@ -61,13 +61,21 @@ def make_layers(cfg, in_channel=1):
     return nn.Sequential(*layers)
 
 
-def cnn_v1(in_channel=1, n_labels=2):
+def cnn_1_16_399(in_channel=1, n_labels=2): # 16 × 399
     cfg = [(32, (2, 4), (1, 3), (1, 2)),
            (64, (2, 4), (1, 3), (1, 1)),
            (128, (2, 3), (1, 2), (1, 1)),
            (256, (4, 4), (2, 3), (1, 2))]
-    model = CNN(make_layers(cfg, in_channel), in_features=256 * 9 * 8, n_labels=n_labels)
+    model = CNN(make_layers(cfg, in_channel=1), in_features=256 * 9 * 8, n_labels=n_labels)
 
     return model
 
 
+def cnn_16_751_751(n_labels=2):
+    cfg = [(32, (4, 4), (3, 3), (0, 0)),
+           (64, (4, 4), (3, 3), (2, 2)),
+           (128, (4, 4), (3, 3), (1, 1)),
+           (256, (4, 4), (3, 3), (2, 2))]
+    model = CNN(make_layers(cfg, in_channel=16), in_features=256 * 10 * 10, n_labels=n_labels)
+
+    return model

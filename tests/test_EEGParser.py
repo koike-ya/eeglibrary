@@ -12,5 +12,7 @@ class TestEEGParser(TestCase):
         self.parser = EEGParser(self.eeg_conf, spect)
 
     def test_to_spect(self):
+        self.eeg.values = self.eeg.resample(self.eeg_conf['sample_rate'])
+        self.eeg.sr = self.eeg_conf['sample_rate']
         spect_tensor = self.parser.to_spect(self.eeg)
         self.assertEqual(spect_tensor.size(0), len(self.eeg.channel_list))
