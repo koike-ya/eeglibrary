@@ -3,7 +3,7 @@ from eeglibrary.src.eeg_parser import EEGParser
 
 
 class EEGDataSet(Dataset, EEGParser):
-    def __init__(self, manifest_filepath, eeg_conf, classes=None, normalize=False, augment=False):
+    def __init__(self, manifest_filepath, eeg_conf, classes=None, normalize=False, augment=False, return_path=False):
         with open(manifest_filepath, 'r') as f:
             path_list = f.readlines()
         path_list = [p.strip() for p in path_list]
@@ -12,6 +12,7 @@ class EEGDataSet(Dataset, EEGParser):
         self.size = len(path_list)
         self.classes = classes # self.classes is None in test dataset
         self.suffix = path_list[0][-4:]
+        self.return_path = return_path
         super(EEGDataSet, self).__init__(eeg_conf, normalize, augment)
 
     def __getitem__(self, index):
@@ -20,6 +21,8 @@ class EEGDataSet(Dataset, EEGParser):
         if self.classes:
             label = self._parse_label(eeg_path)
             return y, self.classes.index(label)
+        elif self.return_path:
+            return y, eeg_path
         else:
             return y
 
