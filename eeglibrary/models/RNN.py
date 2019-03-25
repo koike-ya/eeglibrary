@@ -59,9 +59,10 @@ class SequenceWise(nn.Module):
 
 
 class BatchRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, bidirectional=False, batch_norm=True):
+    def __init__(self, input_size, hidden_size, batch_size, rnn_type=nn.LSTM, bidirectional=False, batch_norm=True):
         super(BatchRNN, self).__init__()
         self.input_size = input_size
+        self.batch_size = batch_size
         self.hidden_size = hidden_size
         self.bidirectional = bidirectional
         self.batch_norm = SequenceWise(nn.BatchNorm1d(input_size)) if batch_norm else None
@@ -72,7 +73,8 @@ class BatchRNN(nn.Module):
     def flatten_parameters(self):
         self.rnn.flatten_parameters()
 
-    def forward(self, x, output_lengths=torch.Tensor([1]*2)):
+    def forward(self, x):
+        output_lengths = torch.Tensor([1] * self.batch_size)
         if self.batch_norm is not None:
             x = self.batch_norm(x)
         x = nn.utils.rnn.pack_padded_sequence(x, output_lengths)
@@ -92,7 +94,7 @@ class InferenceBatchSoftmax(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, conv, conv_out_ftrs, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5,
+    def __init__(self, conv, conv_out_ftrs, batch_size, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5,
                  eeg_conf=None, bidirectional=True):
         super(RNN, self).__init__()
 
@@ -115,7 +117,7 @@ class RNN(nn.Module):
         rnn_input_size = conv_out_ftrs
 
         rnns = []
-        rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type,
+        rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, batch_size=batch_size, rnn_type=rnn_type,
                        bidirectional=bidirectional, batch_norm=False)
         rnns.append(('0', rnn))
         for x in range(nb_layers - 1):
