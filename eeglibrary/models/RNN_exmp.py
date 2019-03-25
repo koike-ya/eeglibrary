@@ -1,32 +1,37 @@
-import os, sys, pdb
-from pathlib import Path
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-import copy
-import gc
-import warnings
-warnings.filterwarnings('ignore')
-
-
 from __future__ import print_function, division
+
 import torch
-from torch import nn
-import torchvision
+
 seed = 0
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
-from random import shuffle
+import torch.nn.functional as F
 import random
 random.seed(seed)
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset, DataLoader
+import warnings
+warnings.filterwarnings('ignore')
+from collections import OrderedDict
+from torch.nn.parameter import Parameter
+
+from collections import OrderedDict
+
+import torch
+
+seed = 0
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+import random
+random.seed(seed)
 import torch.nn as nn
 import math
-import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import models, transforms, utils
+
+
+supported_rnns = {
+    'lstm': nn.LSTM,
+    'rnn': nn.RNN,
+    'gru': nn.GRU
+}
+supported_rnns_inv = dict((v, k) for k, v in supported_rnns.items())
 
 
 class MaskConv(nn.Module):
@@ -57,6 +62,49 @@ class MaskConv(nn.Module):
                     mask[i].narrow(2, length, mask[i].size(2) - length).fill_(1)
             x = x.masked_fill(mask, 0)
         return x, lengths
+
+
+class InferenceBatchSoftmax(nn.Module):
+    def forward(self, input_):
+        if not self.training:
+            return F.softmax(input_, dim=-1)
+        else:
+            return input_
+
+
+class Lookahead(nn.Module):
+    # Wang et al 2016 - Lookahead Convolution Layer for Unidirectional Recurrent Neural Networks
+    # input shape - sequence, batch, feature - TxNxH
+    # output shape - same as input
+    def __init__(self, n_features, context):
+        # should we handle batch_first=True?
+        super(Lookahead, self).__init__()
+        self.n_features = n_features
+        self.weight = Parameter(torch.Tensor(n_features, context + 1))
+        assert context > 0
+        self.context = context
+        self.register_parameter('bias', None)
+        self.init_parameters()
+
+    def init_parameters(self):  # what's a better way initialiase this layer?
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.uniform_(-stdv, stdv)
+
+    def forward(self, input):
+        seq_len = input.size(0)
+        # pad the 0th dimension (T/sequence) with zeroes whose number = context
+        # Once pytorch's padding functions have settled, should move to those.
+        padding = torch.zeros(self.context, *(input.size()[1:])).type_as(input)
+        x = torch.cat((input, padding), 0)
+
+        # add lookahead windows (with context+1 width) as a fourth dimension
+        # for each seq-batch-feature combination
+        x = [x[i:i + self.context + 1] for i in range(seq_len)]  # TxLxNxH - sequence, context, batch, feature
+        x = torch.stack(x)
+        x = x.permute(0, 2, 3, 1)  # TxNxHxL - sequence, batch, feature, context
+
+        x = torch.mul(x, self.weight).sum(dim=3)
+        return x
 
 
 class SequenceWise(nn.Module):
@@ -109,7 +157,7 @@ class BatchRNN(nn.Module):
 
 
 class DeepSpeech(nn.Module):
-    def __init__(self, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5, eeg_conf=None,
+    def __init__(self, conv, conv_out_ftrs, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5, eeg_conf=None,
                  bidirectional=True, context=20, mixed_precision=False):
         super(DeepSpeech, self).__init__()
 
@@ -129,19 +177,13 @@ class DeepSpeech(nn.Module):
         window_size = self.eeg_conf.get("window_size", 1.0)
         num_classes = len(self.labels)
 
-        self.conv = MaskConv(nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=(41, 11), stride=(2, 2), padding=(20, 5)),
-            nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True),
-            nn.Conv2d(32, 32, kernel_size=(21, 11), stride=(2, 1), padding=(10, 5)),
-            nn.BatchNorm2d(32),
-            nn.Hardtanh(0, 20, inplace=True)
-        ))
+        self.conv = conv
+        rnn_input_size = conv_out_ftrs
         # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
-        rnn_input_size = int(math.floor((sample_rate * window_size) / 2) + 1)
-        rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
-        rnn_input_size = int(math.floor(rnn_input_size + 2 * 10 - 21) / 2 + 1)
-        rnn_input_size *= 32
+        # rnn_input_size = int(math.floor((sample_rate * window_size) / 2) + 1)
+        # rnn_input_size = int(math.floor(rnn_input_size + 2 * 20 - 41) / 2 + 1)
+        # rnn_input_size = int(math.floor(rnn_input_size + 2 * 10 - 21) / 2 + 1)
+        # rnn_input_size *= 32
 
         rnns = []
         rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type,
@@ -167,19 +209,17 @@ class DeepSpeech(nn.Module):
         )
         self.inference_softmax = InferenceBatchSoftmax()
 
-    def forward(self, x, lengths):
+    def forward(self, x):
         if x.is_cuda and self.mixed_precision:
             x = x.half()
-        lengths = lengths.cpu().int()
-        output_lengths = self.get_seq_lens(lengths)
-        x, _ = self.conv(x, output_lengths)
+        x = self.conv(x)
 
         sizes = x.size()
         x = x.view(sizes[0], sizes[1] * sizes[2], sizes[3])  # Collapse feature dimension
         x = x.transpose(1, 2).transpose(0, 1).contiguous()  # TxNxH
 
         for rnn in self.rnns:
-            x = rnn(x, output_lengths)
+            x = rnn(x)
 
         if not self.bidirectional:  # no need for lookahead layer in bidirectional
             x = self.lookahead(x)
@@ -188,20 +228,7 @@ class DeepSpeech(nn.Module):
         x = x.transpose(0, 1)
         # identity in training mode, softmax in eval mode
         x = self.inference_softmax(x)
-        return x, output_lengths
-
-    def get_seq_lens(self, input_length):
-        """
-        Given a 1D Tensor or Variable containing integer sequence lengths, return a 1D tensor or variable
-        containing the size sequences that will be output by the network.
-        :param input_length: 1D Tensor
-        :return: 1D Tensor scaled by model
-        """
-        seq_len = input_length
-        for m in self.conv.modules():
-            if type(m) == nn.modules.conv.Conv2d:
-                seq_len = ((seq_len + 2 * m.padding[1] - m.dilation[1] * (m.kernel_size[1] - 1) - 1) / m.stride[1] + 1)
-        return seq_len.int()
+        return x
 
     @classmethod
     def load_model(cls, path):
