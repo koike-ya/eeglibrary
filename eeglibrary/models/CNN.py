@@ -52,7 +52,7 @@ class CNN(nn.Module):
         return x
 
 
-def make_layers(cfg, in_channel=1, dim='2'):
+def make_layers(cfg, in_channel=1, dim=2):
     if dim == 2:
         conv_cls, max_pool_cls, batch_norm_cls = nn.Conv2d, nn.MaxPool2d, nn.BatchNorm2d
     elif dim == 3:
