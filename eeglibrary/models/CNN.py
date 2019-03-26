@@ -69,7 +69,7 @@ def make_layers(cfg, in_channel=1, dim='2'):
     return nn.Sequential(*layers)
 
 
-def cnn_1_16_399(in_channel=1, n_labels=2): # 16 × 399
+def cnn_1_16_399(n_labels=2): # 16 × 399
     cfg = [(32, (2, 4), (1, 3), (1, 2)),
            (64, (2, 4), (1, 3), (1, 1)),
            (128, (2, 3), (1, 2), (1, 1)),
