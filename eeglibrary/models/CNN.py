@@ -79,6 +79,16 @@ def cnn_1_16_399(n_labels=2): # 16 × 399
     return model
 
 
+def cnn_1_24_399(n_labels=2): # 24 × 399
+    cfg = [(32, (3, 4), (1, 3), (0, 2)),
+           (64, (3, 4), (2, 3), (1, 1)),
+           (128, (3, 3), (1, 2), (0, 1)),
+           (256, (3, 4), (2, 3), (1, 2))]
+    model = CNN(make_layers(cfg, in_channel=1), in_features=256 * 4 * 10, n_labels=n_labels)
+
+    return model
+
+
 def cnn_16_751_751(n_labels=2):
     cfg = [(32, (4, 4), (3, 3), (0, 0)),
            (64, (4, 4), (3, 3), (2, 2)),
