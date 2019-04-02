@@ -1,18 +1,13 @@
 import torch
-from torch import nn
-import torchvision
+
 seed = 0
 torch.manual_seed(seed)
+import math
 torch.cuda.manual_seed_all(seed)
-from random import shuffle
 import random
 random.seed(seed)
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import models, transforms, utils
+from torchvision import models
 
 
 class vgg_16:
@@ -52,7 +47,7 @@ class CNN(nn.Module):
         return x
 
 
-def make_layers(cfg, in_channel=1, dim=2):
+def make_layers(cfg, eeg_conf, in_channel=1, dim=2):
     if dim == 2:
         conv_cls, max_pool_cls, batch_norm_cls = nn.Conv2d, nn.MaxPool2d, nn.BatchNorm2d
     elif dim == 3:
@@ -66,7 +61,18 @@ def make_layers(cfg, in_channel=1, dim=2):
             conv = conv_cls(in_channel, channel, kernel_size=kernel_size, stride=stride, padding=padding)
             layers += [conv, batch_norm_cls(channel), nn.ReLU(inplace=True)]
         in_channel = channel
-    return nn.Sequential(*layers)
+
+    # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
+    n_fft = int(eeg_conf['sample_rate'] * eeg_conf['window_size'])
+    t = eeg_conf['sample_rate'] // int(eeg_conf['sample_rate'] * eeg_conf['window_stride']) + 1
+    out_sizes = [(1 + n_fft) / 2, t]
+    for dim in range(2):  # height and width
+        for layer in cfg:
+            channel, kernel, stride, padding = layer
+            out_sizes[dim] = int(math.floor(out_sizes[dim] + 2 * padding[dim] - kernel[dim]) / stride[dim] + 1)
+    out_size = out_sizes[0] * out_sizes[1] * cfg[-1][0] # multiply last channel number
+
+    return nn.Sequential(*layers), out_size
 
 
 def cnn_1_16_399(n_labels=2): # 16 × 399
@@ -74,45 +80,43 @@ def cnn_1_16_399(n_labels=2): # 16 × 399
            (64, (2, 4), (1, 3), (1, 1)),
            (128, (2, 3), (1, 2), (1, 1)),
            (256, (4, 4), (2, 3), (1, 2))]
-    model = CNN(make_layers(cfg, in_channel=1), in_features=256 * 9 * 8, n_labels=n_labels)
+    model = CNN(*make_layers(cfg, eeg_conf, in_channel=1), n_labels=n_labels)
 
     return model
 
 
-def cnn_1_24_399(n_labels=2): # 24 × 399
+def cnn_1_24_399(eeg_conf, n_labels=2): # 24 × 399
     cfg = [(32, (3, 4), (1, 3), (0, 2)),
            (64, (3, 4), (2, 3), (1, 1)),
            (128, (3, 3), (1, 2), (0, 1)),
            (256, (3, 4), (2, 3), (1, 2))]
-    model = CNN(make_layers(cfg, in_channel=1), in_features=256 * 4 * 10, n_labels=n_labels)
+    model = CNN(*make_layers(cfg, eeg_conf, in_channel=1), n_labels=n_labels)
 
     return model
 
 
-def cnn_16_751_751(n_labels=2):
-    cfg = [(32, (4, 4), (3, 3), (0, 0)),
-           (64, (4, 4), (3, 3), (2, 2)),
-           (128, (4, 4), (3, 3), (1, 1)),
-           (256, (4, 4), (3, 3), (2, 2))]
-    model = CNN(make_layers(cfg, in_channel=16), in_features=256 * 10 * 10, n_labels=n_labels)
+def cnn_16_751_751(eeg_conf, n_labels=2):
+    cfg = [(32, (4, 2), (3, 2), (0, 1)),
+           (64, (4, 2), (3, 2), (2, 1)),
+           (128, (4, 2), (3, 2), (1, 0))]
+    model = CNN(*make_layers(cfg, eeg_conf, in_channel=16), n_labels=n_labels)
 
     return model
 
 
-def cnn_ftrs_16_751_751(n_labels=2):
+def cnn_ftrs_16_751_751(eeg_conf):
     cfg = [
         (32, (4, 4), (3, 3), (0, 0)),
         (64, (4, 4), (3, 3), (2, 2)),
     ]
-    out_ftrs = 64 * 12 * 7
-    return make_layers(cfg, in_channel=16), out_ftrs
+    return make_layers(cfg, eeg_conf, in_channel=16)
 
 
-def cnn_1_16_751_751(n_labels=1):
+def cnn_1_16_751_751(eeg_conf, n_labels=1):
     cfg = [(16, (4, 4, 4), (2, 3, 3), (2, 0, 0)),
            (32, (4, 4, 4), (2, 3, 3), (2, 2, 2)),
            (64, (4, 4, 4), (2, 3, 3), (2, 1, 1)),
            (128, (2, 4, 4), (1, 3, 3), (0, 2, 2))]
-    model = CNN(make_layers(cfg, in_channel=1, dim=3), in_features=256 * 10 * 10, n_labels=n_labels, dim=3)
+    model = CNN(*make_layers(cfg, eeg_conf, in_channel=1, dim=3), n_labels=n_labels, dim=3)
 
     return model
