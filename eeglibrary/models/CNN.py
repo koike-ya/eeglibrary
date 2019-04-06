@@ -115,8 +115,8 @@ def cnn_16_751_751(eeg_conf, n_labels=2):
 
 def cnn_ftrs_16_751_751(eeg_conf):
     cfg = [
-        (32, (4, 4), (3, 3), (0, 0)),
-        (64, (4, 4), (3, 3), (2, 2)),
+        (32, (4, 2), (3, 2), (0, 1)),
+        (64, (4, 2), (3, 2), (0, 1)),
     ]
     layers = make_layers(cfg, eeg_conf)
     n_channel, (out_height, out_width) = calc_out_size(cfg, eeg_conf, last_shape=True)

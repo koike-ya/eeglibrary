@@ -15,12 +15,12 @@ class TensorBoardLogger(object):
         self.log_params = log_params
 
     def update(self, epoch, values, parameters=None):
-        values = {
-            'Avg Train Loss': values["loss"],
-            'Avg recall 0': values["rec_0"],
-            'Avg recall 1': values["rec_1"],
-            'Avg recall AUC': values["auc"]
-        }
+        # values = {
+        #     'Avg Train Loss': values["loss"],
+        #     'Avg recall 0': values["rec_0"],
+        #     'Avg recall 1': values["rec_1"],
+        #     'Avg recall AUC': values["auc"]
+        # }
         self.tensorboard_writer.add_scalars(self.id, values, epoch + 1)
         if self.log_params:
             for tag, value in parameters():
