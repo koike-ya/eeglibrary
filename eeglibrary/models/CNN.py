@@ -3,6 +3,7 @@ import torch
 seed = 0
 torch.manual_seed(seed)
 import math
+import numpy as np
 torch.cuda.manual_seed_all(seed)
 import random
 random.seed(seed)
@@ -74,17 +75,17 @@ def calc_out_size(cfg, eeg_conf, dim=2, last_shape=False):
     if eeg_conf['spect']:
         n_fft = int(eeg_conf['sample_rate'] * eeg_conf['window_size'])
         t = eeg_conf['sample_rate'] // int(eeg_conf['sample_rate'] * eeg_conf['window_stride']) + 1
-        out_sizes = [(1 + n_fft) / 2, t]
+        out_sizes = [(1 + n_fft) // 2 + 1, t]
         if dim == 3:
             out_sizes = [eeg_conf['n_elect']] + out_sizes
     else:
-        out_sizes = [eeg_conf['n_elect'], eeg_conf['sample_rate']*eeg_conf['window_size']]
+        out_sizes = np.array(eeg_conf['n_elect'], eeg_conf['sample_rate']*eeg_conf['window_size'])
     # Based on above convolutions and spectrogram size using conv formula (W - F + 2P)/ S+1
     for dim in range(dim):  # height and width if dim=2
         for layer in cfg:
             channel, kernel, stride, padding = layer
             out_sizes[dim] = int(math.floor(out_sizes[dim] + 2 * padding[dim] - kernel[dim]) / stride[dim] + 1)
-    out_size = out_sizes[0] * out_sizes[1] * cfg[-1][0] # multiply last channel number
+    out_size = np.prod(out_sizes) * cfg[-1][0] # multiply last channel number
     if last_shape:
         return cfg[-1][0], out_sizes
     return out_size
@@ -124,10 +125,9 @@ def cnn_ftrs_16_751_751(eeg_conf):
 
 
 def cnn_1_16_751_751(eeg_conf, n_labels=1):
-    cfg = [(16, (4, 4, 4), (2, 3, 3), (2, 0, 0)),
-           (32, (4, 4, 4), (2, 3, 3), (2, 2, 2)),
-           (64, (4, 4, 4), (2, 3, 3), (2, 1, 1)),
-           (128, (2, 4, 4), (1, 3, 3), (0, 2, 2))]
+    cfg = [(16, (4, 4, 2), (2, 3, 2), (2, 0, 1)),
+           (32, (4, 4, 2), (2, 3, 2), (2, 2, 1)),
+           (64, (4, 4, 2), (2, 3, 2), (2, 1, 0))]
     layers = make_layers(cfg, eeg_conf, dim=3)
     out_size = calc_out_size(cfg, eeg_conf, dim=3)
     model = CNN(layers, out_size, n_labels, dim=3)
