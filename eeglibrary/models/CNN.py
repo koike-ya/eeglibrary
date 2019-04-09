@@ -74,7 +74,7 @@ def make_layers(cfg, eeg_conf, dim=2):
 def calc_out_size(cfg, eeg_conf, dim=2, last_shape=False):
     if eeg_conf['spect']:
         n_fft = int(eeg_conf['sample_rate'] * eeg_conf['window_size'])
-        t = eeg_conf['sample_rate'] // int(eeg_conf['sample_rate'] * eeg_conf['window_stride']) + 1
+        t = eeg_conf['duration'] * eeg_conf['sample_rate'] // int(eeg_conf['sample_rate'] * eeg_conf['window_stride']) + 1
         out_sizes = [(1 + n_fft) // 2 + 1, t]
         if dim == 3:
             out_sizes = [eeg_conf['n_elect']] + out_sizes

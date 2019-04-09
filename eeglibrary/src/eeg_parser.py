@@ -22,11 +22,27 @@ class EEGParser:
         self.normalize = normalize
         self.augment = augment
 
-    def parse_eeg(self, eeg_path) -> np.array:
+    def _load_eeg(self, eeg_path):
         if eeg_path[-4:] == '.pkl':
             eeg = eeglibrary.EEG.load_pkl(eeg_path)
         else:
             eeg = eeg_loader.from_mat(eeg_path, mat_col='')
+        return eeg
+
+    def _merge_eeg(self, paths):
+        eeg = self._load_eeg(paths[0])
+        if len(paths) != 1:
+            for path in paths[1:]:
+                _ = self._load_eeg(path).values
+                eeg.values = np.hstack((eeg.values, self._load_eeg(path).values))
+        eeg.len_sec = eeg.len_sec * len(paths)
+        return eeg
+
+    def parse_eeg(self, eeg_path) -> np.array:
+        if isinstance(eeg_path, list):
+            eeg = self._merge_eeg(eeg_path)
+        else:
+            eeg = self._load_eeg(eeg_path)
 
         if self.augment:
             raise NotImplementedError
