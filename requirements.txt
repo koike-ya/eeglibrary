@@ -10,3 +10,5 @@ librosa
 tensorboardX
 tensorflow
 tensorboard
+lightgbm
+xgboost
