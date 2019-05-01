@@ -1,6 +1,6 @@
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import SGDClassifier
-import xgboost as xgb
+# import xgboost as xgb
 import lightgbm as lgb
 
 
@@ -16,8 +16,8 @@ class SGDC(SGDClassifier):
 
 class XGBoost:
     def __call__(self):
-        return xgb
-
+        # return xgb
+        raise NotImplementedError
 
 class LightGBM:
     def __call__(self):
