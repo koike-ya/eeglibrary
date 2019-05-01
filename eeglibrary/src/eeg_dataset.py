@@ -4,9 +4,10 @@ from eeglibrary.src import EEG
 import numpy as np
 import torch
 
+
 class EEGDataSet(Dataset, EEGParser):
     def __init__(self, manifest_filepath, eeg_conf, classes=None, duration=1.0, normalize=False, augment=False,
-                 return_path=False):
+                 device='cpu', return_path=False):
         super(EEGDataSet, self).__init__(eeg_conf, normalize, augment)
         self.classes = classes # self.classes is None in test dataset
         with open(manifest_filepath, 'r') as f:
@@ -17,6 +18,7 @@ class EEGDataSet(Dataset, EEGParser):
         self.path_list = self.pack_paths(path_list)
         self.size = len(self.path_list)
         self.return_path = return_path
+        self.device = device
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
@@ -24,7 +26,7 @@ class EEGDataSet(Dataset, EEGParser):
         if self.classes:
             return y, label
         elif self.return_path:
-            return y, eeg_paths
+            return (y, eeg_paths)
         else:
             return y
 

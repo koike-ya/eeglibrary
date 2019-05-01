@@ -4,3 +4,4 @@ from eeglibrary.src.eeg_dataset import *
 from eeglibrary.src.eeg_parser import *
 from eeglibrary.src.eeg_loader import *
 from eeglibrary.src.logger import *
+from eeglibrary.src.metrics import *

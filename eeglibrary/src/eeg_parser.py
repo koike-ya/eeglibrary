@@ -33,7 +33,6 @@ class EEGParser:
         eeg = self._load_eeg(paths[0])
         if len(paths) != 1:
             for path in paths[1:]:
-                _ = self._load_eeg(path).values
                 eeg.values = np.hstack((eeg.values, self._load_eeg(path).values))
         eeg.len_sec = eeg.len_sec * len(paths)
         return eeg
