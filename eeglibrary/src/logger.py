@@ -22,11 +22,11 @@ class TensorBoardLogger(object):
         #     'Avg recall AUC': values["auc"]
         # }
         self.tensorboard_writer.add_scalars(self.id, values, epoch + 1)
-        if self.log_params:
-            for tag, value in parameters():
-                tag = tag.replace('.', '/')
-                self.tensorboard_writer.add_histogram(tag, to_np(value), epoch + 1)
-                self.tensorboard_writer.add_histogram(tag + '/grad', to_np(value.grad), epoch + 1)
+        # if self.log_params:
+        #     for tag, value in parameters():
+        #         tag = tag.replace('.', '/')
+        #         self.tensorboard_writer.add_histogram(tag, to_np(value), epoch + 1)
+        #         self.tensorboard_writer.add_histogram(tag + '/grad', to_np(value.grad), epoch + 1)
 
     def load_previous_values(self, start_epoch, values):
         raise NotImplementedError

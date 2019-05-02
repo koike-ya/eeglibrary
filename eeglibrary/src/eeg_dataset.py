@@ -1,15 +1,17 @@
 from torch.utils.data import Dataset
-from eeglibrary.src.eeg_parser import EEGParser
+from eeglibrary.src.eeg_parser import parse_eeg
 from eeglibrary.src import EEG
+from eeglibrary.src.preprocessor import Preprocessor
 import numpy as np
 import torch
 
 
-class EEGDataSet(Dataset, EEGParser):
-    def __init__(self, manifest_filepath, eeg_conf, classes=None, duration=1.0, normalize=False, augment=False,
+class EEGDataSet(Dataset):
+    def __init__(self, manifest_filepath, eeg_conf, to_1d=False, classes=None, normalize=False, augment=False,
                  device='cpu', return_path=False):
-        super(EEGDataSet, self).__init__(eeg_conf, normalize, augment)
-        self.classes = classes # self.classes is None in test dataset
+        super(EEGDataSet, self).__init__()
+        self.preprocessor = Preprocessor(eeg_conf, normalize, augment, to_1d, scaling_axis=None)
+        self.classes = classes  # self.classes is None in test dataset
         with open(manifest_filepath, 'r') as f:
             path_list = f.readlines()
         path_list = [p.strip() for p in path_list]
@@ -22,7 +24,9 @@ class EEGDataSet(Dataset, EEGParser):
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
-        y = self.parse_eeg(eeg_paths)
+        eeg = parse_eeg(eeg_paths)
+        y = self.preprocessor.preprocess(eeg)
+
         if self.classes:
             return y, label
         elif self.return_path:
