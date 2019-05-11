@@ -41,6 +41,18 @@ class EEG:
             eeg = pickle.load(f)
         return eeg
 
+    @classmethod
+    def from_edf(cls, edf):
+        signals = np.zeros((n, edf.getNSamples()[0]))
+        n = edf.signals_in_file
+        for i in np.arange(n):
+            try:
+                signals[i, :] = edf.readSignal(i)
+            except ValueError as e:
+                np.delete(signals, i, 0)
+
+        return EEG(signals, edf.getSignalLabels(), edf.getFileDuration(), edf.getSampleFrequencies()[0])
+
     def __repr__(self):
         self.info()
         return ""
