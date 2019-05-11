@@ -43,8 +43,8 @@ class EEG:
 
     @classmethod
     def from_edf(cls, edf):
-        signals = np.zeros((n, edf.getNSamples()[0]))
         n = edf.signals_in_file
+        signals = np.zeros((n, edf.getNSamples()[0]))
         for i in np.arange(n):
             try:
                 signals[i, :] = edf.readSignal(i)
