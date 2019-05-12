@@ -4,10 +4,11 @@ from eeglibrary.src import EEG
 from eeglibrary.src.preprocessor import Preprocessor
 import numpy as np
 import torch
+from types import MethodType
 
 
 class EEGDataSet(Dataset):
-    def __init__(self, manifest_filepath, eeg_conf, to_1d=False, classes=None, normalize=False, augment=False,
+    def __init__(self, manifest_filepath, eeg_conf, label_func, to_1d=False, classes=None, normalize=False, augment=False,
                  device='cpu', return_path=False):
         super(EEGDataSet, self).__init__()
         self.preprocessor = Preprocessor(eeg_conf, normalize, augment, to_1d, scaling_axis=None)
@@ -17,7 +18,7 @@ class EEGDataSet(Dataset):
         path_list = [p.strip() for p in path_list]
         self.suffix = path_list[0][-4:]
         self.duration = eeg_conf['duration']
-        self.path_list = self.pack_paths(path_list)
+        self.path_list = self.pack_paths(path_list, label_func)
         self.size = len(self.path_list)
         self.return_path = return_path
         self.device = device
@@ -25,6 +26,8 @@ class EEGDataSet(Dataset):
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
         eeg = parse_eeg(eeg_paths)
+        if eeg.values.shape[0] == 0:
+            a = ''
         y = self.preprocessor.preprocess(eeg)
 
         if self.classes:
@@ -37,29 +40,23 @@ class EEGDataSet(Dataset):
     def __len__(self):
         return self.size
 
-    def _parse_label(self, path):
-        if self.suffix == '.pkl':
-            return path.split('/')[-2].split('_')[2]
-        else:
-            return path.split('_')[2]
-
-    def labels_index(self, paths=None) -> [int]:
+    def labels_index(self, paths=None, label_func=None) -> [int]:
         if not self.classes:
             return [None] * len(paths)
         if paths:
-            return [self.classes.index(self._parse_label(path)) for path in paths]
+            return [self.classes.index(label_func(path)) for path in paths]
         return [label for path, label in self.path_list]
 
-    def pack_paths(self, path_list):
+    def pack_paths(self, path_list, label_func=None):
         if self.duration == 1:
-            return [([p], label) for p, label in zip(path_list, self.labels_index(path_list))]
+            return [([p], label) for p, label in zip(path_list, self.labels_index(path_list, label_func))]
 
         one_eeg = EEG.load_pkl(path_list[0])
         len_sec = one_eeg.len_sec
         n_use_eeg = int(self.duration / len_sec)
         assert n_use_eeg == self.duration / len_sec, 'Duration must be common multiple of {}'.format(len_sec)
 
-        labels = self.labels_index(path_list)
+        labels = self.labels_index(path_list, label_func)
         packed_path_label_list = [(path_list[i:i + n_use_eeg], labels[i:i + n_use_eeg]) for i in
                                   range(0, len(path_list), n_use_eeg)]
         for i, (paths, labels) in enumerate(packed_path_label_list):

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from eeglibrary.src.utils import common_eeg_setup
+from eeglibrary.utils.utils import common_eeg_setup
 from eeglibrary.src.eeg_parser import EEGParser
 
 

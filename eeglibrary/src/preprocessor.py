@@ -1,6 +1,5 @@
 from eeglibrary.src import eeg_loader
 from eeglibrary.src.signal_processor import to_spect, butter_filter
-from eeglibrary.src.utils import to_correlation_matrix, calc_eigen_values_sorted, flatten_corr_upper_right
 import eeglibrary
 import numpy as np
 from sklearn import preprocessing
@@ -74,3 +73,24 @@ class Preprocessor:
 
     def mfcc(self):
         raise NotImplementedError
+
+
+def to_correlation_matrix(waves):
+    return np.corrcoef(waves)
+
+
+def calc_eigen_values_sorted(matrix):
+    w, v = np.linalg.eig(matrix)
+    w = np.absolute(w)
+    w.sort()
+    return w
+
+
+# Take the upper right triangle of a matrix
+def flatten_corr_upper_right(matrix):
+    accum = []
+    for i in range(matrix.shape[0]):
+        for j in range(i+1, matrix.shape[1]):
+            accum.append(matrix[i, j])
+
+    return np.array(accum)

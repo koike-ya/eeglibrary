@@ -3,8 +3,6 @@ from eeglibrary.src.EEG import EEG
 from pathlib import Path
 from eeglibrary.src.eeg_loader import from_mat
 
-from eeglibrary.src.utils import common_eeg_setup
-
 
 class TestEEG(TestCase):
 
