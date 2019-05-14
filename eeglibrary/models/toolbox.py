@@ -25,6 +25,9 @@ class BaseClassifier:
     def predict(self, x):
         return self.model.predict(x)
 
+    def predict_proba(self, x):
+        return self.model.predict_proba(x)
+
 
 class KNN(BaseClassifier):
     def __init__(self, class_labels):
@@ -65,7 +68,8 @@ class XGBoost(BaseClassifier):
             nthread=4,
             scale_pos_weight=1,
             seed=27,
-            missing=None, random_state=0, n_jobs=4, objective='binary:logistic')
+            num_class=len(class_labels),
+            missing=None, random_state=0, n_jobs=4, objective='multi:softmax')
         self.model = xgb.XGBClassifier(**params)
         super(XGBoost, self).__init__(class_labels)
 

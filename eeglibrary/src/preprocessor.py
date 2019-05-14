@@ -80,6 +80,8 @@ def to_correlation_matrix(waves):
 
 
 def calc_eigen_values_sorted(matrix):
+    if np.any(np.isnan(matrix)):
+        a = ''
     w, v = np.linalg.eig(matrix)
     w = np.absolute(w)
     w.sort()

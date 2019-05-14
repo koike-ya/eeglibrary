@@ -11,8 +11,7 @@ from eeglibrary.utils import train_args, AverageMeter
 from sklearn.metrics import log_loss
 
 
-def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn'):
-
+def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn', classes=None):
     if type == 'nn':
         optimizer.zero_grad()
         with torch.set_grad_enabled(phase == 'train'):
@@ -29,8 +28,8 @@ def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn'):
         inputs, labels = inputs.data.numpy(), labels.data.numpy()
         if phase == 'train':
             model.partial_fit(inputs, labels)
-        preds = model.predict(inputs)
-        loss = criterion(labels, preds, labels=[0, 1])  # logloss of skearn is reverse argment order compared with pytorch criterion
+        preds = model.predict_proba(inputs)
+        loss = criterion(labels, preds, labels=classes)  # logloss of skearn is reverse argment order compared with pytorch criterion
 
     return preds, loss
 
@@ -57,9 +56,10 @@ def train(args, class_names, label_func):
         losses[phase], recall[phase], far[phase] = (AverageMeter() for i in range(3))
 
     # init setting
+    classes = [i for i in range(len(class_names))]
     device = init_device(args)
     eeg_conf = set_eeg_conf(args)
-    model = set_model(args, class_names, eeg_conf, device)
+    model = set_model(args, classes, eeg_conf, device)
     dataloaders = {phase: set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu') for phase in ['train', 'val']}
 
     if 'nn' in args.model_name:
@@ -98,7 +98,8 @@ def train(args, class_names, label_func):
                 if args.scaling:
                     inputs = (inputs - 100).div(600)
 
-                preds, loss_value = train_model(model, inputs, labels, phase, optimizer, criterion, args.model_name)
+                preds, loss_value = train_model(model, inputs, labels, phase, optimizer, criterion, args.model_name,
+                                                classes)
 
                 epoch_preds[i * args.batch_size:(i + 1) * args.batch_size, 0] = preds
                 epoch_labels[i * args.batch_size:(i + 1) * args.batch_size, 0] = labels

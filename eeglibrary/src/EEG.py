@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 
 
-FILE_FORMAT = ['.mat']
+FILE_FORMAT = ['.mat', '.pkl']
 
 
 class EEG:
@@ -99,5 +99,8 @@ class EEG:
     def resample(self, n_resample) -> np.array([]):
         resampled = np.zeros((len(self.channel_list), int(n_resample * self.len_sec)))
         for i in range(len(self.channel_list)):
-            resampled[i, :] = scipy.signal.resample(self.values[i], int(n_resample * self.len_sec))
+            try:
+                resampled[i, :] = scipy.signal.resample(self.values[i], int(n_resample * self.len_sec))
+            except ValueError as e:
+                a = ''
         return resampled
