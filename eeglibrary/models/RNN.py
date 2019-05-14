@@ -94,8 +94,8 @@ class InferenceBatchSoftmax(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, conv, conv_out_ftrs, batch_size, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768, nb_layers=5,
-                 eeg_conf=None, bidirectional=True):
+    def __init__(self, conv, conv_out_ftrs, batch_size, rnn_type=nn.LSTM, labels="abc", rnn_hidden_size=768,
+                 nb_layers=5, eeg_conf=None, bidirectional=True):
         super(RNN, self).__init__()
 
         # model metadata needed for serialization/deserialization

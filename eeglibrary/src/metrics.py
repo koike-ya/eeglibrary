@@ -20,7 +20,7 @@ def false_detection_rate(y_pred, y_true, numpy=False):
     if numpy:
         return np.dot(y_true == 0, y_pred == 1) / len(y_pred)
 
-    fp = torch.dot(y_true.le(0).float(), y_pred).sum()
+    fp = torch.dot(y_true.le(0).float(), y_pred.float()).sum()
     return fp.div(len(y_pred)).item()
 
 #
