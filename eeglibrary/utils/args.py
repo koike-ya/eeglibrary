@@ -45,8 +45,8 @@ def add_nn_model_args(parser):
 
     # RNN params
     nn_parser.add_argument('--rnn-type', default='gru', help='Type of the RNN. rnn|gru|lstm are supported')
-    nn_parser.add_argument('--hidden-size', default=800, type=int, help='Hidden size of RNNs')
-    nn_parser.add_argument('--hidden-layers', default=5, type=int, help='Number of RNN layers')
+    nn_parser.add_argument('--rnn-hidden-size', default=400, type=int, help='Hidden size of RNNs')
+    nn_parser.add_argument('--rnn-n-layers', default=3, type=int, help='Number of RNN layers')
     nn_parser.add_argument('--no-bidirectional', dest='bidirectional', action='store_false', default=True,
                         help='Turn off bi-directional RNNs, introduces lookahead convolution')
 
