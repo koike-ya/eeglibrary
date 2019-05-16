@@ -25,25 +25,6 @@ def common_eeg_setup(eeg_path='', mat_col=''):
     return from_mat(eeg_path, mat_col), eeg_conf
 
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-
 def init_seed(args):
     # Set seeds for determinism
     torch.manual_seed(args.seed)
@@ -91,14 +72,14 @@ def set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu')
 
 
 def set_model(args, class_names, eeg_conf, device):
-    if args.model_name == 'cnn_1_16_399':
+    if args.model_name == '2dcnn_1':
         model = cnn_1_16_399(eeg_conf, n_labels=len(class_names))
-    elif args.model_name == 'cnn_16_751_751':
+    elif args.model_name == '2dcnn_2':
         model = cnn_16_751_751(eeg_conf, n_labels=len(class_names))
-    elif args.model_name == 'rnn_16_751_751':
+    elif args.model_name == 'rnn':
         cnn, out_ftrs = cnn_ftrs_16_751_751(eeg_conf)
         model = RNN(cnn, out_ftrs, args.batch_size, args.rnn_type, class_names, eeg_conf=eeg_conf)
-    elif args.model_name == 'cnn_1_16_751_751':
+    elif args.model_name == '3dcnn':
         model = cnn_1_16_751_751(eeg_conf, n_labels=len(class_names))
     elif args.model_name == 'xgboost':
         model = XGBoost(list(range(len(class_names))))

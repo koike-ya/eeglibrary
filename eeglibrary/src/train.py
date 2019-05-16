@@ -6,17 +6,18 @@ from pathlib import Path
 import torch
 from eeglibrary.src import recall_rate, false_detection_rate
 from eeglibrary.src import test
-from eeglibrary.utils import TensorBoardLogger, set_model, set_dataloader, set_eeg_conf, init_device, init_seed
-from eeglibrary.utils import train_args, AverageMeter
+from eeglibrary.utils import train_args, TensorBoardLogger, set_model, set_dataloader, set_eeg_conf, init_device, init_seed
+from eeglibrary.src import AverageMeter
 from sklearn.metrics import log_loss
+from sklearn.preprocessing import OneHotEncoder
+import numpy as np
 
 
 def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn', classes=None):
-    if type == 'nn':
+    if 'nn' in type:
         optimizer.zero_grad()
         with torch.set_grad_enabled(phase == 'train'):
             outputs = model(inputs)
-            # print('forward calculation time', time.time() - (data_load_time + start_time))
             loss = criterion(outputs, labels)
 
             if phase == 'train':
@@ -28,8 +29,10 @@ def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn', c
         inputs, labels = inputs.data.numpy(), labels.data.numpy()
         if phase == 'train':
             model.partial_fit(inputs, labels)
-        preds = model.predict_proba(inputs)
-        loss = criterion(labels, preds, labels=classes)  # logloss of skearn is reverse argment order compared with pytorch criterion
+        preds = model.predict(inputs)
+        enc = OneHotEncoder(handle_unknown='ignore').fit(np.array([0, 1, 2]).reshape(-1, 1))
+        # logloss of skearn is reverse argment order compared with pytorch criterion
+        loss = criterion(labels, enc.transform(preds.reshape(-1, 1)).toarray(), labels=classes)
 
     return preds, loss
 
@@ -41,7 +44,34 @@ def save_model(model, model_path, numpy):
         torch.save(model.state_dict(), model_path)
 
 
-def train(args, class_names, label_func):
+def update_by_epoch(args, metrics, phase, model, numpy, optimizer):
+    for metric in metrics:
+        best_flag = metric.average_meter[phase].update_best()
+        # save model
+
+        if metric.save_model and best_flag and phase == 'val':
+            print("Found better validated model, saving to %s" % args.model_path)
+            save_model(model, args.model_path, numpy)
+
+        # reset epoch average meter
+        metric.average_meter[phase].reset()
+
+    # anneal lr
+    if phase == 'train' and (not numpy):
+        param_groups = optimizer.param_groups
+        for g in param_groups:
+            g['lr'] = g['lr'] / args.learning_anneal
+        print('Learning rate annealed to: {lr:.6f}'.format(lr=g['lr']))
+
+
+def record_log(logger, phase, metrics, epoch):
+    values = {}
+    for metric in metrics:
+        values[phase + '_' + metric.name] = metric.average_meter[phase].average
+    logger.update(epoch, values)
+
+
+def train(args, class_names, label_func, metrics):
     init_seed(args)
     Path(args.model_path).parent.mkdir(exist_ok=True, parents=True)
 
@@ -50,10 +80,9 @@ def train(args, class_names, label_func):
 
     start_epoch, start_iter, optim_state = 0, 0, None
     # far; False alarm rate = 1 - specificity
-    best_loss, best_far, losses, far, recall = {}, {}, {}, {}, {}
+    best_loss, best_far = {}, {}
     for phase in ['train', 'val']:
         best_loss[phase], best_far[phase] = 1000, 1.0
-        losses[phase], recall[phase], far[phase] = (AverageMeter() for i in range(3))
 
     # init setting
     classes = [i for i in range(len(class_names))]
@@ -65,7 +94,8 @@ def train(args, class_names, label_func):
     if 'nn' in args.model_name:
         parameters = model.parameters()
         optimizer = torch.optim.SGD(parameters, lr=args.lr)
-        criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([1.0, args.pos_loss_weight]).to(device))
+        args.weight = list(map(float, args.loss_weight.split(',')))
+        criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(args.weight).to(device))
         numpy = False
     else:
         optimizer = None
@@ -105,51 +135,28 @@ def train(args, class_names, label_func):
                 epoch_labels[i * args.batch_size:(i + 1) * args.batch_size, 0] = labels
 
                 # save loss and recall in one batch
-                losses[phase].update(loss_value / inputs.size(0), inputs.size(0))
-                recall[phase].update(recall_rate(preds, labels, numpy))
-                far[phase].update(false_detection_rate(preds, labels, numpy))
+                for metric in metrics:
+                    metric.update(phase, loss_value, inputs.size(0), preds, labels, classes, numpy)
+
+                if not args.silent:
+                    print('Epoch: [{0}][{1}/{2}]'.format(epoch, i+1, len(dataloaders[phase])), end='\t')
+                    print('Time {batch_time.value:.3f}'.format(batch_time=batch_time), end='\t')
+                    for metric in metrics:
+                        print('{} {:.3f}'.format(metric.name, metric.average_meter[phase].value), end='\t')
+                    print('')
+                    # print('Epoch: [{0}][{1}/{2}] \tTime {batch_time.value:.3f} \t'
+                    #       'recall {recall.value:.3f} far {far.value:.3f} '
+                    #       '\tLoss {loss.value:.4f} ({loss.average:.4f}) \t'.format(
+                    #     epoch, (i + 1), len(dataloaders[phase]), batch_time=batch_time,
+                    #     recall=recall[phase], far=far[phase], loss=losses[phase]))
 
                 # measure elapsed time
                 batch_time.update(time.time() - start_time)
-
-                if not args.silent:
-                    print('Epoch: [{0}][{1}/{2}] \tTime {batch_time.val:.3f} \t'
-                          'recall {recall.val:.3f} far {far.val:.3f} '
-                          '\tLoss {loss.val:.4f} ({loss.avg:.4f}) \t'.format(
-                        epoch, (i + 1), len(dataloaders[phase]), batch_time=batch_time,
-                        recall=recall[phase], far=far[phase], loss=losses[phase]))
-
                 start_time = time.time()
 
-            if losses[phase].avg < best_loss[phase]:
-                best_loss[phase] = losses[phase].avg
-                if phase == 'val':
-                    print("Found better validated model, saving to %s" % args.model_path)
-                    save_model(model, args.model_path, numpy)
-
-            if far[phase].avg < best_far[phase]:
-                best_far[phase] = far[phase].avg
-
             if args.tensorboard:
-                if args.log_params:
-                    raise NotImplementedError
-                values = {
-                    phase + '_loss': losses[phase].avg,
-                    phase + '_recall': recall[phase].avg,
-                    phase + '_far': far[phase].avg,
-                }
-                tensorboard_logger.update(epoch, values)
-
-            # anneal lr
-            if phase == 'train' and (not numpy):
-                param_groups = optimizer.param_groups
-                for g in param_groups:
-                    g['lr'] = g['lr'] / args.learning_anneal
-                print('Learning rate annealed to: {lr:.6f}'.format(lr=g['lr']))
-
-            losses[phase].reset()
-            recall[phase].reset()
-            far[phase].reset()
+                record_log(tensorboard_logger, phase, metrics, epoch)
+            update_by_epoch(args, metrics, phase, model, numpy, optimizer)
 
     print('execution time was {}'.format(time.time() - execute_time))
 
@@ -161,4 +168,6 @@ def train(args, class_names, label_func):
 if __name__ == '__main__':
     args = train_args().parse_args()
     class_names = []
-    train(args, class_names)
+    from eeglibrary.metrics import Metric
+    metrics = [Metric('loss', save_model=True), Metric('recall'), Metric('far')]
+    train(args, class_names, lambda x: x, metrics)

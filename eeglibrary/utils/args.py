@@ -69,8 +69,8 @@ def add_hyper_param_args(parser):
     nn_parser.add_argument('--batch-size', default=32, type=int, help='Batch size for training')
     nn_parser.add_argument('--epoch-rate', default=1.0, type=float, help='Data rate to to use in one epoch')
     nn_parser.add_argument('--num-workers', default=4, type=int, help='Number of workers used in data-loading')
-    nn_parser.add_argument('--pos-loss-weight', default=1.0, type=float, help='The weights of positive class loss')
-    nn_parser.add_argument('--epochs', default=70, type=int, help='Number of training epochs')
+    nn_parser.add_argument('--loss-weight', default='1.0,1.0,1.0', type=str, help='The weights of all class about loss')
+    nn_parser.add_argument('--epochs', default=20, type=int, help='Number of training epochs')
     return parser
 
 

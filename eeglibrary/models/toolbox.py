@@ -59,7 +59,7 @@ class XGBoost(BaseClassifier):
     def __init__(self, class_labels):
         params = dict(
             learning_rate=0.1,
-            n_estimators=1000,
+            n_estimators=100,
             max_depth=5,
             min_child_weight=1,
             gamma=0,
