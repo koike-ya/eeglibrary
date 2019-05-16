@@ -153,12 +153,12 @@ def test_args():
 
 def search_args():
     parser = argparse.ArgumentParser(description='Parameter search arguments')
-    parser.add_argument('--sub-path', default='../output/sth.csv', type=str, help='submission file save folder name')
-    parser.add_argument('--model-path', metavar='DIR', help='directory to save models', default='../model/sth.pth')
+    parser.add_argument('--sub-path', default='output/sth.csv', type=str, help='submission file save folder name')
+    parser.add_argument('--model-path', metavar='DIR', help='directory to save models', default='model/sth.pth')
     parser.add_argument('--train-manifest', type=str, help='manifest file for training', default='input/train_manifest.csv')
     parser.add_argument('--val-manifest', type=str, help='manifest file for validation', default='input/val_manifest.csv')
     parser.add_argument('--test-manifest', type=str, help='manifest file for test', default='input/test_manifest.csv')
-    parser.add_argument('--log-dir', type=str, help='tensorboard log dir', default='../log/tensorboard/')
+    parser.add_argument('--log-dir', type=str, help='tensorboard log dir', default='log/tensorboard/')
     parser.add_argument('--epochs', default=30, type=int, help='Number of training epochs')
     parser.add_argument('--gpu-id', default=0, type=int, help='ID of GPU to use')
 
@@ -174,8 +174,9 @@ def search_args():
     parser.add_argument('--learning-anneal', default='1.1', type=str,
                         help='Annealing applied to learning rate every epoch')
     parser.add_argument('--sample-rate', default='1500', type=str, help='Sample rate')
-    parser.add_argument('--hidden-layers', default='2', type=str, help='Number of RNN layers')
-    parser.add_argument('--hidden-size', default='400', type=str, help='Hidden size of RNNs')
+
+    parser.add_argument('--rnn-n-layers', default='2', type=str, help='Number of RNN layers')
+    parser.add_argument('--rnn-hidden-size', default='400', type=str, help='Hidden size of RNNs')
     parser.add_argument('--pos-loss-weight', default='1.0', type=str, help='The weights of positive class loss')
     parser.add_argument('--duration', default='1.0', type=str, help='Duration of one EEG dataset')
 

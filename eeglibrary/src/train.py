@@ -158,7 +158,10 @@ def train(args, class_names, label_func, metrics):
                 record_log(tensorboard_logger, phase, metrics, epoch)
             update_by_epoch(args, metrics, phase, model, numpy, optimizer)
 
-    print('execution time was {}'.format(time.time() - execute_time))
+    if args.silent:
+        print(best_loss['val'].item())
+    else:
+        print('execution time was {}'.format(time.time() - execute_time))
 
     if args.test:
         # test phase

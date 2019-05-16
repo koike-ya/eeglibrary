@@ -78,7 +78,8 @@ def set_model(args, class_names, eeg_conf, device):
         model = cnn_16_751_751(eeg_conf, n_labels=len(class_names))
     elif args.model_name == 'rnn':
         cnn, out_ftrs = cnn_ftrs_16_751_751(eeg_conf)
-        model = RNN(cnn, out_ftrs, args.batch_size, args.rnn_type, class_names, eeg_conf=eeg_conf)
+        model = RNN(cnn, out_ftrs, args.batch_size, args.rnn_type, class_names, eeg_conf=eeg_conf,
+                    rnn_hidden_size=args.rnn_hidden_size, nb_layers=args.rnn_n_layers)
     elif args.model_name == '3dcnn':
         model = cnn_1_16_751_751(eeg_conf, n_labels=len(class_names))
     elif args.model_name == 'xgboost':
@@ -93,7 +94,8 @@ def set_model(args, class_names, eeg_conf, device):
 
     if 'nn' in args.model_name:
         model = model.to(device)
-        print(model)
+        if not args.silent:
+            print(model)
 
     return model
 
