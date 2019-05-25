@@ -30,7 +30,7 @@ def set_requires_grad(model, requires_grad=True):
         param.requires_grad = requires_grad
 
 
-def adda(args, source_model, eeg_conf, label_func, class_names, device, src_manifests, target_manifests):
+def adda(args, source_model, eeg_conf, label_func, class_names, device, source_manifest, target_manifest):
     target_model = deepcopy(source_model)
     source_model.load_state_dict(torch.load(args.model_path))
     source_model.eval()
@@ -52,9 +52,6 @@ def adda(args, source_model, eeg_conf, label_func, class_names, device, src_mani
     ).to(device)
 
     half_batch = args.batch_size // 2
-
-    source_manifest = concat_manifests(src_manifests, 'source')
-    target_manifest = concat_manifests(target_manifests, 'target')
 
     source_dataset = EEGDataSet(source_manifest, eeg_conf, label_func, class_names, args.to_1d, device=device)
     source_loader = EEGDataLoader(source_dataset, batch_size=half_batch, num_workers=args.num_workers,
@@ -139,10 +136,10 @@ def main(args, class_names, label_func, metrics):
     eeg_conf = set_eeg_conf(args)
     model = set_model(args, classes, eeg_conf, device)
 
-    src_manifests = args.source_manifests.split(',')
-    target_manifests = args.target_manifests.split(',')
+    source_manifest = concat_manifests(args.source_manifests.split(','), 'source')
+    target_manifest = concat_manifests(args.target_manifests.split(','), 'target')
 
-    adda(args, model, eeg_conf, label_func, class_names, device, src_manifests, target_manifests)
+    adda(args, model, eeg_conf, label_func, class_names, device, source_manifest, target_manifest)
 
 
 if __name__ == '__main__':
