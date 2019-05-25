@@ -8,7 +8,7 @@ def split_args():
     parser.add_argument('--patients-dir', metavar='DIR',
                         help='directory where patients data placed', default='input/splitted')
     parser.add_argument('--duration', type=float,
-                        help='duration of one splitted wave', default=1.0)
+                        help='duration of one splitted wave', default=10.0)
 
     return parser
 
@@ -20,7 +20,7 @@ def add_preprocess_args(parser):
     prep_parser.add_argument('--scaling', dest='scaling', action='store_true', help='Feature scaling or not')
     prep_parser.add_argument('--augment', dest='augment', action='store_true',
                         help='Use random tempo and gain perturbations.')
-    prep_parser.add_argument('--duration', default=1.0, type=float, help='Duration of one EEG dataset')
+    prep_parser.add_argument('--duration', default=10.0, type=float, help='Duration of one EEG dataset')
     prep_parser.add_argument('--window-size', default=4.0, type=float, help='Window size for spectrogram in seconds')
     prep_parser.add_argument('--window-stride', default=2.0, type=float, help='Window stride for spectrogram in seconds')
     prep_parser.add_argument('--window', default='hamming', help='Window type for spectrogram generation')
@@ -69,7 +69,7 @@ def add_hyper_param_args(parser):
     nn_parser.add_argument('--batch-size', default=32, type=int, help='Batch size for training')
     nn_parser.add_argument('--epoch-rate', default=1.0, type=float, help='Data rate to to use in one epoch')
     nn_parser.add_argument('--num-workers', default=4, type=int, help='Number of workers used in data-loading')
-    nn_parser.add_argument('--loss-weight', default='1.0,1.0,1.0', type=str, help='The weights of all class about loss')
+    nn_parser.add_argument('--loss-weight', default='1.0,1.0', type=str, help='The weights of all class about loss')
     nn_parser.add_argument('--epochs', default=20, type=int, help='Number of training epochs')
     return parser
 
@@ -103,6 +103,7 @@ def train_args():
     parser.add_argument('--log-dir', default='visualize/', help='Location of tensorboard log')
     parser.add_argument('--log-params', dest='log_params', action='store_true',
                         help='Log parameter values and gradients')
+    parser.add_argument('--adda', dest='adda', action='store_true', help='train with adda or not')
     parser.add_argument('--test', dest='test', action='store_true', help='Test phase after training or not')
     parser = add_test_args(parser)
 
@@ -151,6 +152,20 @@ def test_args():
     return parser
 
 
+def add_adda_args(parser):
+    adda_parser = parser.add_argument_group("ADDA options")
+
+    adda_parser.add_argument('--source-manifests', type=str, help='manifest files to use as source',
+                             default='input/test_manifest.csv,input/test_manifest.csv')
+    adda_parser.add_argument('--target-manifests', type=str, help='manifest files to use as target',
+                             default='input/test_manifest.csv,input/test_manifest.csv')
+    adda_parser.add_argument('--iterations', type=int, default=500)
+    adda_parser.add_argument('--adda-epochs', type=int, default=10)
+    adda_parser.add_argument('--k-disc', type=int, default=5)
+    adda_parser.add_argument('--k-clf', type=int, default=10)
+    return parser
+
+
 def search_args():
     parser = argparse.ArgumentParser(description='Parameter search arguments')
     parser.add_argument('--sub-path', default='output/sth.csv', type=str, help='submission file save folder name')
@@ -178,6 +193,6 @@ def search_args():
     parser.add_argument('--rnn-n-layers', default='2', type=str, help='Number of RNN layers')
     parser.add_argument('--rnn-hidden-size', default='400', type=str, help='Hidden size of RNNs')
     parser.add_argument('--pos-loss-weight', default='1.0', type=str, help='The weights of positive class loss')
-    parser.add_argument('--duration', default='1.0', type=str, help='Duration of one EEG dataset')
+    parser.add_argument('--duration', default='10.0', type=str, help='Duration of one EEG dataset')
 
     return parser.parse_args()

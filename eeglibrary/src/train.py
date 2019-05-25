@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 import torch
-from eeglibrary.src import recall_rate, false_detection_rate
+from eeglibrary.models import adda
 from eeglibrary.src import test
 from eeglibrary.utils import train_args, TensorBoardLogger, set_model, set_dataloader, set_eeg_conf, init_device, init_seed
 from eeglibrary.src import AverageMeter
@@ -157,6 +157,9 @@ def train(args, class_names, label_func, metrics):
             if args.tensorboard:
                 record_log(tensorboard_logger, phase, metrics, epoch)
             update_by_epoch(args, metrics, phase, model, numpy, optimizer)
+
+    if args.adda:
+        pass
 
     if args.silent:
         print(best_loss['val'].item())

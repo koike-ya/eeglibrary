@@ -3,19 +3,18 @@ from eeglibrary.src.eeg_parser import parse_eeg
 from eeglibrary.src import EEG
 from eeglibrary.src.preprocessor import Preprocessor
 import numpy as np
+import pandas as pd
 import torch
 from types import MethodType
 
 
 class EEGDataSet(Dataset):
-    def __init__(self, manifest_filepath, eeg_conf, label_func, to_1d=False, classes=None, normalize=False, augment=False,
+    def __init__(self, manifest_filepath, eeg_conf, label_func, classes=None, to_1d=False, normalize=False, augment=False,
                  device='cpu', return_path=False):
         super(EEGDataSet, self).__init__()
         self.preprocessor = Preprocessor(eeg_conf, normalize, augment, to_1d, scaling_axis=None)
         self.classes = classes  # self.classes is None in test dataset
-        with open(manifest_filepath, 'r') as f:
-            path_list = f.readlines()
-        path_list = [p.strip() for p in path_list]
+        path_list = self._load_path_list(manifest_filepath)
         self.suffix = path_list[0][-4:]
         self.duration = eeg_conf['duration']
         self.path_list = self.pack_paths(path_list, label_func)
@@ -26,8 +25,6 @@ class EEGDataSet(Dataset):
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
         eeg = parse_eeg(eeg_paths)
-        if eeg.values.shape[0] == 0:
-            a = ''
         y = self.preprocessor.preprocess(eeg)
 
         if self.classes:
@@ -39,6 +36,12 @@ class EEGDataSet(Dataset):
 
     def __len__(self):
         return self.size
+
+    def _load_path_list(self, path):
+        with open(path, 'r') as f:
+            path_list = f.readlines()
+
+        return [p.strip() for p in path_list]
 
     def labels_index(self, paths=None, label_func=None) -> [int]:
         if not self.classes:
