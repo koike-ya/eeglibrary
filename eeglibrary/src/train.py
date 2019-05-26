@@ -94,7 +94,7 @@ def train(args, class_names, label_func, metrics):
     if 'nn' in args.model_name:
         parameters = model.parameters()
         optimizer = torch.optim.SGD(parameters, lr=args.lr)
-        args.weight = list(map(float, args.loss_weight.split(',')))
+        args.weight = list(map(float, args.loss_weight.split('-')))
         criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(args.weight).to(device))
         numpy = False
     else:
