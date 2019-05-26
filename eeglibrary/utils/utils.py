@@ -2,6 +2,7 @@ from __future__ import print_function, division
 
 from eeglibrary.src.eeg_loader import from_mat
 import pandas as pd
+from pathlib import Path
 
 from torch.utils.data.sampler import WeightedRandomSampler
 
@@ -56,14 +57,16 @@ def set_eeg_conf(args):
     return eeg_conf
 
 
-def set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu'):
-    if phase == 'test':
-        dataset = EEGDataSet(args.test_manifest, eeg_conf, label_func, args.to_1d, classes=None, return_path=True)
+def set_dataloader(args, eeg_conf, class_names, phase, label_func, device='cpu'):
+    if phase in ['test', 'inference']:
+        return_path = True if phase == 'inference' else False
+        dataset = EEGDataSet(args.test_manifest, eeg_conf, label_func, classes=class_names, to_1d=args.to_1d,
+                             return_path=return_path)
         dataloader = EEGDataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers,
                                           pin_memory=True, shuffle=False)
     else:
         manifest_path = [value for key, value in vars(args).items() if phase in key][0]
-        dataset = EEGDataSet(manifest_path, eeg_conf, label_func, args.to_1d, class_names, device=device)
+        dataset = EEGDataSet(manifest_path, eeg_conf, label_func, classes=class_names, to_1d=args.to_1d, device=device)
         weights = make_weights_for_balanced_classes(dataset.labels_index(), len(class_names))
         sampler = WeightedRandomSampler(weights, int(len(dataset) * args.epoch_rate))
         dataloader = EEGDataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers,
@@ -94,7 +97,7 @@ def set_model(args, class_names, eeg_conf, device):
 
     if 'nn' in args.model_name:
         model = model.to(device)
-        if not args.silent:
+        if hasattr(args, 'silent') and (not args.silent):
             print(model)
 
     return model
@@ -108,3 +111,15 @@ def arrange_paths(args, sub_name):
     args.log_id = sub_name
 
     return args
+
+
+def concat_manifests(manifests, save_name):
+    # manifestファイルのpathが入ったリストを受け取って、dfを読み込んで結合して返す
+    assert isinstance(manifests, list)
+
+    master_df = pd.DataFrame()
+    for manifest in manifests:
+        master_df = pd.concat([master_df, pd.read_csv(manifest, header=None)], axis=0, sort=False)
+
+    master_df.to_csv(Path(manifests[0]).parent / save_name, index=False, header=None)
+    return Path(manifests[0]).parent / save_name

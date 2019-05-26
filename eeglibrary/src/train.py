@@ -4,8 +4,8 @@ import time
 from pathlib import Path
 
 import torch
-from eeglibrary.src import recall_rate, false_detection_rate
-from eeglibrary.src import test
+from eeglibrary.models import adda
+from eeglibrary.src.test import test, inference
 from eeglibrary.utils import train_args, TensorBoardLogger, set_model, set_dataloader, set_eeg_conf, init_device, init_seed
 from eeglibrary.src import AverageMeter
 from sklearn.metrics import log_loss
@@ -89,12 +89,13 @@ def train(args, class_names, label_func, metrics):
     device = init_device(args)
     eeg_conf = set_eeg_conf(args)
     model = set_model(args, classes, eeg_conf, device)
-    dataloaders = {phase: set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu') for phase in ['train', 'val']}
+    dataloaders = {phase: set_dataloader(args, eeg_conf, class_names, phase, label_func, device='cpu')
+                   for phase in ['train', 'val']}
 
     if 'nn' in args.model_name:
         parameters = model.parameters()
         optimizer = torch.optim.SGD(parameters, lr=args.lr)
-        args.weight = list(map(float, args.loss_weight.split(',')))
+        args.weight = list(map(float, args.loss_weight.split('-')))
         criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(args.weight).to(device))
         numpy = False
     else:
@@ -144,11 +145,6 @@ def train(args, class_names, label_func, metrics):
                     for metric in metrics:
                         print('{} {:.3f}'.format(metric.name, metric.average_meter[phase].value), end='\t')
                     print('')
-                    # print('Epoch: [{0}][{1}/{2}] \tTime {batch_time.value:.3f} \t'
-                    #       'recall {recall.value:.3f} far {far.value:.3f} '
-                    #       '\tLoss {loss.value:.4f} ({loss.average:.4f}) \t'.format(
-                    #     epoch, (i + 1), len(dataloaders[phase]), batch_time=batch_time,
-                    #     recall=recall[phase], far=far[phase], loss=losses[phase]))
 
                 # measure elapsed time
                 batch_time.update(time.time() - start_time)
@@ -158,6 +154,10 @@ def train(args, class_names, label_func, metrics):
                 record_log(tensorboard_logger, phase, metrics, epoch)
             update_by_epoch(args, metrics, phase, model, numpy, optimizer)
 
+    if args.adda:
+        adda(args, model, eeg_conf, label_func, class_names, criterion, device,
+             source_manifest=args.train_manifest, target_manifest=args.val_manifest)
+
     if args.silent:
         print(best_loss['val'].item())
     else:
@@ -165,7 +165,12 @@ def train(args, class_names, label_func, metrics):
 
     if args.test:
         # test phase
-        test(args, class_names)
+        test(args, model, eeg_conf, label_func, class_names, numpy, device)
+
+    if args.inference:
+        # inference phase
+        return inference(args, model, eeg_conf, numpy, device)
+
 
 
 if __name__ == '__main__':
