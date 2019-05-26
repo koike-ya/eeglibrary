@@ -57,7 +57,7 @@ def set_eeg_conf(args):
     return eeg_conf
 
 
-def set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu'):
+def set_dataloader(args, eeg_conf, class_names, phase, label_func, device='cpu'):
     if phase in ['test', 'inference']:
         return_path = True if phase == 'inference' else False
         dataset = EEGDataSet(args.test_manifest, eeg_conf, label_func, classes=class_names, to_1d=args.to_1d,

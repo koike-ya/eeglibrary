@@ -89,7 +89,8 @@ def train(args, class_names, label_func, metrics):
     device = init_device(args)
     eeg_conf = set_eeg_conf(args)
     model = set_model(args, classes, eeg_conf, device)
-    dataloaders = {phase: set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu') for phase in ['train', 'val']}
+    dataloaders = {phase: set_dataloader(args, eeg_conf, class_names, phase, label_func, device='cpu')
+                   for phase in ['train', 'val']}
 
     if 'nn' in args.model_name:
         parameters = model.parameters()
@@ -168,8 +169,8 @@ def train(args, class_names, label_func, metrics):
 
     if args.inference:
         # inference phase
-        # inference(args, model, eeg_conf, criterion, label_func, class_names, numpy, device)
-        pass
+        return inference(args, model, eeg_conf, numpy, device)
+
 
 
 if __name__ == '__main__':
