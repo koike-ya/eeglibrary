@@ -105,6 +105,7 @@ def train_args():
                         help='Log parameter values and gradients')
     parser.add_argument('--adda', dest='adda', action='store_true', help='train with adda or not')
     parser.add_argument('--test', dest='test', action='store_true', help='Test phase after training or not')
+    parser.add_argument('--inference', action='store_true', help='Inference phase after training or not')
     parser = add_test_args(parser)
 
     # parser.add_argument('--continue-from', default='', help='Continue from checkpoint model')
@@ -160,7 +161,7 @@ def add_adda_args(parser):
     adda_parser.add_argument('--target-manifests', type=str, help='manifest files to use as target',
                              default='input/test_manifest.csv,input/test_manifest.csv')
     adda_parser.add_argument('--iterations', type=int, default=500)
-    adda_parser.add_argument('--adda-epochs', type=int, default=10)
+    adda_parser.add_argument('--adda-epochs', type=int, default=5)
     adda_parser.add_argument('--k-disc', type=int, default=5)
     adda_parser.add_argument('--k-clf', type=int, default=10)
     return parser

@@ -137,9 +137,6 @@ def adda(args, source_model, eeg_conf, label_func, class_names, target_criterion
         clf.feature_extractor = target_model
         torch.save(clf.state_dict(), Path(args.model_path).parent / 'adda.pt')
 
-    Path(source_manifest).unlink()
-    Path(target_manifest).unlink()
-
 
 def main(args, class_names, label_func, metrics):
     init_seed(args)

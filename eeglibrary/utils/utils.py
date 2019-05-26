@@ -58,8 +58,10 @@ def set_eeg_conf(args):
 
 
 def set_dataloader(args, class_names, label_func, eeg_conf, phase, device='cpu'):
-    if phase == 'test':
-        dataset = EEGDataSet(args.test_manifest, eeg_conf, label_func, classes=None, to_1d=args.to_1d, return_path=True)
+    if phase in ['test', 'inference']:
+        return_path = True if phase == 'inference' else False
+        dataset = EEGDataSet(args.test_manifest, eeg_conf, label_func, classes=class_names, to_1d=args.to_1d,
+                             return_path=return_path)
         dataloader = EEGDataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers,
                                           pin_memory=True, shuffle=False)
     else:
@@ -95,7 +97,7 @@ def set_model(args, class_names, eeg_conf, device):
 
     if 'nn' in args.model_name:
         model = model.to(device)
-        if not args.silent:
+        if hasattr(args, 'silent') and (not args.silent):
             print(model)
 
     return model
