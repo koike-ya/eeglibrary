@@ -30,7 +30,8 @@ def set_requires_grad(model, requires_grad=True):
         param.requires_grad = requires_grad
 
 
-def adda(args, source_model, eeg_conf, label_func, class_names, device, source_manifest, target_manifest):
+def adda(args, source_model, eeg_conf, label_func, class_names, target_criterion, device,
+         source_manifest, target_manifest):
     target_model = deepcopy(source_model)
     source_model.load_state_dict(torch.load(args.model_path))
     source_model.eval()
@@ -41,6 +42,8 @@ def adda(args, source_model, eeg_conf, label_func, class_names, device, source_m
 
     target_model.load_state_dict(torch.load(args.model_path))
     in_features = target_model.classifier[0].in_features
+    target_classifier = target_model.classifier
+    target_classifier.eval()
     target_model = target_model.features
 
     discriminator = nn.Sequential(
@@ -63,13 +66,15 @@ def adda(args, source_model, eeg_conf, label_func, class_names, device, source_m
 
     discriminator_optim = torch.optim.Adam(discriminator.parameters())
     target_optim = torch.optim.Adam(target_model.parameters())
-    criterion = nn.BCEWithLogitsLoss()
+    disc_criterion = nn.BCEWithLogitsLoss()
 
     for epoch in range(1, args.adda_epochs + 1):
         batch_iterator = zip(loop_iterable(source_loader), loop_iterable(target_loader))
 
-        total_loss = 0
-        total_accuracy = 0
+        disc_loss = 0
+        disc_acc = 0
+        target_loss = 0
+        target_acc = 0
         for _ in trange(args.iterations, leave=False):
             # Train discriminator
             set_requires_grad(target_model, requires_grad=False)
@@ -86,37 +91,47 @@ def adda(args, source_model, eeg_conf, label_func, class_names, device, source_m
                                              torch.zeros(target_x.shape[0], device=device)])
 
                 preds = discriminator(discriminator_x).squeeze()
-                loss = criterion(preds, discriminator_y)
+                disc_loss = disc_criterion(preds, discriminator_y)
 
                 discriminator_optim.zero_grad()
-                loss.backward()
+                disc_loss.backward()
                 discriminator_optim.step()
 
-                total_loss += loss.item()
-                total_accuracy += ((preds > 0).long() == discriminator_y.long()).float().mean().item()
+                disc_loss += disc_loss.item()
+                disc_acc += ((preds > 0).long() == discriminator_y.long()).float().mean().item()
 
             # Train classifier
             set_requires_grad(target_model, requires_grad=True)
             set_requires_grad(discriminator, requires_grad=False)
             for _ in range(args.k_clf):
-                _, (target_x, _) = next(batch_iterator)
-                target_x = target_x.to(device)
+                _, (target_x, target_y) = next(batch_iterator)
+                target_x, target_y = target_x.to(device), target_y.to(device)
                 target_features = target_model(target_x).view(target_x.shape[0], -1)
 
                 # flipped labels
                 discriminator_y = torch.ones(target_x.shape[0], device=device)
 
                 preds = discriminator(target_features).squeeze()
-                loss = criterion(preds, discriminator_y)
+                disc_loss = disc_criterion(preds, discriminator_y)
 
                 target_optim.zero_grad()
-                loss.backward()
+                disc_loss.backward()
                 target_optim.step()
 
-        mean_loss = total_loss / (args.iterations * args.k_disc)
-        mean_accuracy = total_accuracy / (args.iterations * args.k_disc)
-        tqdm.write(f'EPOCH {epoch:03d}: discriminator_loss={mean_loss:.4f}, '
-                   f'discriminator_accuracy={mean_accuracy:.4f}')
+                x = target_model(target_x)
+                x = x.view(x.size(0), -1)
+                x = target_classifier(x)
+                target_preds = nn.Softmax(dim=-1)(x)
+                target_loss += target_criterion(target_preds, target_y).item()
+                target_acc += ((torch.max(target_preds, 1)[1] > 0.5).long() == target_y.long()).float().mean().item()
+
+        mean_target_loss = target_loss / (args.iterations * args.k_clf)
+        mean_target_acc = target_acc / (args.iterations * args.k_clf)
+        mean_disc_loss = disc_loss / (args.iterations * args.k_disc)
+        mean_disc_acc = disc_acc / (args.iterations * args.k_disc)
+        tqdm.write(f'EPOCH {epoch:03d}: disc_loss: {mean_disc_loss:.4f}\t '
+                   f'disc_acc={mean_disc_acc:.4f}\t target_loss={mean_target_loss:.4f}\t '
+                   f'target_acc={mean_target_acc:.4f}')
 
         # Create the full target model and save it
         clf.feature_extractor = target_model
@@ -135,11 +150,14 @@ def main(args, class_names, label_func, metrics):
     device = init_device(args)
     eeg_conf = set_eeg_conf(args)
     model = set_model(args, classes, eeg_conf, device)
+    args.weight = list(map(float, args.loss_weight.split('-')))
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor(args.weight).to(device))
 
     source_manifest = concat_manifests(args.source_manifests.split(','), 'source')
     target_manifest = concat_manifests(args.target_manifests.split(','), 'target')
 
-    adda(args, model, eeg_conf, label_func, class_names, device, source_manifest, target_manifest)
+    adda(args, model, eeg_conf, label_func, class_names, criterion, device,
+         source_manifest, target_manifest)
 
 
 if __name__ == '__main__':

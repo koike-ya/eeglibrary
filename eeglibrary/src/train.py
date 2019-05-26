@@ -159,7 +159,8 @@ def train(args, class_names, label_func, metrics):
             update_by_epoch(args, metrics, phase, model, numpy, optimizer)
 
     if args.adda:
-        pass
+        adda(args, model, eeg_conf, label_func, class_names, criterion, device,
+             source_manifest=args.train_manifest, target_manifest=args.val_manifest)
 
     if args.silent:
         print(best_loss['val'].item())
