@@ -37,10 +37,13 @@ class EEGDataSet(Dataset):
     def __len__(self):
         return self.size
 
-    def _load_path_list(self, path):
-        with open(path, 'r') as f:
-            path_list = f.readlines()
+    def _load_path_list(self, paths):
+        path_list = []
+        for path in str(paths).split(','):
+            with open(path, 'r') as f:
+                path_list.extend(f.readlines())
 
+        # removing \n character from string
         return [p.strip() for p in path_list]
 
     def labels_index(self, paths=None, label_func=None) -> [int]:
