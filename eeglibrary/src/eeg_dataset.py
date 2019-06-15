@@ -1,23 +1,26 @@
-from torch.utils.data import Dataset
-from eeglibrary.src.eeg_parser import parse_eeg
-from eeglibrary.src import EEG
-from eeglibrary.src.preprocessor import Preprocessor
-import numpy as np
-import pandas as pd
-import torch
-from types import MethodType
+from eeglibrary.eeglibrary.src.eeg_parser import parse_eeg
+from eeglibrary.eeglibrary.src import EEG
+from eeglibrary.eeglibrary.src.preprocessor import Preprocessor
+from wrapper.src import ManifestDataSet
 
 
-class EEGDataSet(Dataset):
-    def __init__(self, manifest_filepath, eeg_conf, label_func, classes=None, to_1d=False, normalize=False, augment=False,
+class EEGDataSet(ManifestDataSet):
+    def __init__(self, manifest_path, data_conf, eeg_conf, to_1d=False, normalize=False, augment=False,
                  device='cpu', return_path=False):
-        super(EEGDataSet, self).__init__()
+        """
+        data_conf: {
+            'load_func': Function to load data from manifest correctly,
+            'labels': List of labels or None if it's made from path
+            'label_func': Function to extract labels from path or None if labels are given as 'labels'
+        }
+
+        """
+        super(EEGDataSet, self).__init__(manifest_path, data_conf)
         self.preprocessor = Preprocessor(eeg_conf, normalize, augment, to_1d, scaling_axis=None)
-        self.classes = classes  # self.classes is None in test dataset
-        path_list = self._load_path_list(manifest_filepath)
+        path_list = self._load_path_list(manifest_path)
         self.suffix = path_list[0][-4:]
         self.duration = eeg_conf['duration']
-        self.path_list = self.pack_paths(path_list, label_func)
+        self.path_list = self.pack_paths(path_list, data_conf['label_func'])
         self.size = len(self.path_list)
         self.return_path = return_path
         self.device = device
@@ -27,7 +30,7 @@ class EEGDataSet(Dataset):
         eeg = parse_eeg(eeg_paths)
         y = self.preprocessor.preprocess(eeg)
 
-        if self.classes:
+        if self.labels:
             return y, label
         elif self.return_path:
             return (y, eeg_paths)
@@ -47,10 +50,10 @@ class EEGDataSet(Dataset):
         return [p.strip() for p in path_list]
 
     def labels_index(self, paths=None, label_func=None) -> [int]:
-        if not self.classes:
+        if not self.labels:
             return [None] * len(paths)
         if paths:
-            return [self.classes.index(label_func(path)) for path in paths]
+            return [self.labels.index(label_func(path)) for path in paths]
         return [label for path, label in self.path_list]
 
     def pack_paths(self, path_list, label_func=None):

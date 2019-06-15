@@ -4,10 +4,11 @@ import time
 from pathlib import Path
 
 import torch
-from eeglibrary.models import adda
-from eeglibrary.src.test import test, inference
-from eeglibrary.utils import train_args, TensorBoardLogger, set_model, set_dataloader, set_eeg_conf, init_device, init_seed
-from eeglibrary.src import AverageMeter
+# from wrapper.models import adda
+from eeglibrary.eeglibrary.src import test
+from eeglibrary.eeglibrary.utils import set_eeg_conf
+from wrapper.src import AverageMeter
+from wrapper.utils import train_args, TensorBoardLogger, set_model, set_dataloader, init_device, init_seed
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
@@ -172,10 +173,29 @@ def train(args, class_names, label_func, metrics):
         return inference(args, model, eeg_conf, numpy, device)
 
 
-
 if __name__ == '__main__':
+    # This is for kaggle seizure prediction data
+
+    from wrapper.src.metrics import Metric
+    metrics = [
+        Metric('loss', initial_value=10000, inequality='less', save_model=True),
+        Metric('accuracy', initial_value=0, inequality='more'),
+    ]
+
+    class_names = ['interictal', 'preictal']
+
+    def load_func():
+        pass
+
+    def label_func(path):
+        return path.split('/')[-2].split('_')[2]
+
+    data_conf = {
+        'load_func': load_func,
+        'labels': class_names,
+        'label_func': label_func,
+    }
+
     args = train_args().parse_args()
-    class_names = []
-    from eeglibrary.metrics import Metric
-    metrics = [Metric('loss', save_model=True), Metric('recall'), Metric('far')]
+
     train(args, class_names, lambda x: x, metrics)

@@ -3,9 +3,10 @@ from __future__ import print_function, division
 import pandas as pd
 import numpy as np
 import torch
-from eeglibrary.utils import test_args
-from eeglibrary.models.RNN import *
-from eeglibrary.utils import init_seed, init_device, set_eeg_conf, set_dataloader, set_model
+from eeglibrary.eeglibrary.utils import test_args
+from wrapper.models.RNN import *
+from eeglibrary.eeglibrary.utils import set_eeg_conf
+from wrapper.utils import init_seed, init_device, set_dataloader, set_model
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score

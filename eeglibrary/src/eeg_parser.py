@@ -1,6 +1,6 @@
 import eeglibrary
 import numpy as np
-from eeglibrary.src import eeg_loader
+from eeglibrary.eeglibrary.src import eeg_loader
 
 
 def _load_eeg(eeg_path):

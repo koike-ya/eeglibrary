@@ -1,15 +1,16 @@
 from __future__ import print_function, division
 
-from eeglibrary.src.eeg_loader import from_mat
+from eeglibrary.eeglibrary.src.eeg_loader import from_mat
 import pandas as pd
 from pathlib import Path
 
 from torch.utils.data.sampler import WeightedRandomSampler
 
-from eeglibrary.src import EEGDataSet, EEGDataLoader, make_weights_for_balanced_classes, EEG
-from eeglibrary.models.CNN import *
-from eeglibrary.models.RNN import *
-from eeglibrary.models.toolbox import *
+from eeglibrary.eeglibrary.src import EEGDataSet, EEGDataLoader, EEG
+from wrapper.src import make_weights_for_balanced_classes
+from wrapper.models.CNN import *
+from wrapper.models.RNN import *
+from wrapper.models.toolbox import *
 
 
 def common_eeg_setup(eeg_path='', mat_col=''):
@@ -24,21 +25,6 @@ def common_eeg_setup(eeg_path='', mat_col=''):
     eeg_path = eeg_path or '/home/tomoya/workspace/kaggle/seizure-prediction/input/Dog_1/train/Dog_1_interictal_segment_0001.mat'
     mat_col = mat_col or 'interictal_segment_1'
     return from_mat(eeg_path, mat_col), eeg_conf
-
-
-def init_seed(args):
-    # Set seeds for determinism
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-
-
-def init_device(args):
-    device = torch.device("cuda" if args.cuda else "cpu")
-    if args.cuda:
-        torch.cuda.set_device(args.gpu_id)
-    return device
 
 
 def set_eeg_conf(args):

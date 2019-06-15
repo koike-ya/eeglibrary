@@ -1,5 +1,5 @@
-from eeglibrary.src import eeg_loader
-from eeglibrary.src.signal_processor import to_spect, butter_filter
+from eeglibrary.eeglibrary.src import eeg_loader
+from eeglibrary.eeglibrary.src.signal_processor import to_spect, butter_filter
 import eeglibrary
 import numpy as np
 from sklearn import preprocessing
