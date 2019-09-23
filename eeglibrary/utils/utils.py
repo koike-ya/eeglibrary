@@ -1,16 +1,13 @@
 from __future__ import print_function, division
 
-from eeglibrary.eeglibrary.src.eeg_loader import from_mat
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
+from eeglibrary.src import EEGDataSet, EEGDataLoader
+from eeglibrary.src.eeg_loader import from_mat
+from ml.models.toolbox import *
+from ml.src.dataloader import make_weights_for_balanced_classes
 from torch.utils.data.sampler import WeightedRandomSampler
-
-from eeglibrary.eeglibrary.src import EEGDataSet, EEGDataLoader, EEG
-from wrapper.src import make_weights_for_balanced_classes
-from wrapper.models.CNN import *
-from wrapper.models.RNN import *
-from wrapper.models.toolbox import *
 
 
 def common_eeg_setup(eeg_path='', mat_col=''):
@@ -25,22 +22,6 @@ def common_eeg_setup(eeg_path='', mat_col=''):
     eeg_path = eeg_path or '/home/tomoya/workspace/kaggle/seizure-prediction/input/Dog_1/train/Dog_1_interictal_segment_0001.mat'
     mat_col = mat_col or 'interictal_segment_1'
     return from_mat(eeg_path, mat_col), eeg_conf
-
-
-def set_eeg_conf(args):
-    manifest_path = [value for key, value in vars(args).items() if 'manifest' in key][0]
-    one_eeg_path = pd.read_csv(manifest_path).values[0][0]
-    n_elect = len(EEG.load_pkl(one_eeg_path).channel_list)
-    eeg_conf = dict(spect=args.spect,
-                    n_elect=n_elect,
-                    duration=args.duration,
-                    window_size=args.window_size,
-                    window_stride=args.window_stride,
-                    window='hamming',
-                    sample_rate=args.sample_rate,
-                    low_cutoff=args.l_cutoff,
-                    high_cutoff=args.h_cutoff)
-    return eeg_conf
 
 
 def set_dataloader(args, eeg_conf, class_names, phase, label_func, device='cpu'):

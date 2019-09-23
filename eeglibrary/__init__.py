@@ -1,1 +1,1 @@
-from eeglibrary.eeglibrary.src import *
+from eeglibrary.src import *

@@ -1,11 +1,11 @@
-from eeglibrary.eeglibrary.src.eeg_parser import parse_eeg
-from eeglibrary.eeglibrary.src import EEG
-from eeglibrary.eeglibrary.src.preprocessor import Preprocessor
-from wrapper.src import ManifestDataSet
+from eeglibrary.src import EEG
+from eeglibrary.src.eeg_parser import parse_eeg
+from eeglibrary.src.preprocessor import Preprocessor
+from ml.src.dataset import ManifestDataSet
 
 
 class EEGDataSet(ManifestDataSet):
-    def __init__(self, manifest_path, data_conf, eeg_conf, to_1d=False, normalize=False, augment=False,
+    def __init__(self, manifest_path, data_conf, to_1d=False, normalize=False, augment=False,
                  device='cpu', return_path=False):
         """
         data_conf: {
@@ -15,63 +15,62 @@ class EEGDataSet(ManifestDataSet):
         }
 
         """
-        super(EEGDataSet, self).__init__(manifest_path, data_conf)
-        self.preprocessor = Preprocessor(eeg_conf, normalize, augment, to_1d, scaling_axis=None)
-        path_list = self._load_path_list(manifest_path)
-        self.suffix = path_list[0][-4:]
-        self.duration = eeg_conf['duration']
-        self.path_list = self.pack_paths(path_list, data_conf['label_func'])
-        self.size = len(self.path_list)
+        super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=data_conf['load_func'],
+                                         label_func=data_conf['label_func'])
+        self.preprocessor = Preprocessor(data_conf, normalize, augment, to_1d, scaling_axis=None)
+        # self.suffix = self.path_list[0][-4:]
+        self.path_list = self.pack_paths(self.path_list, data_conf['duration'])
         self.return_path = return_path
-        self.device = device
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
         eeg = parse_eeg(eeg_paths)
-        y = self.preprocessor.preprocess(eeg)
+        x = self.preprocessor.preprocess(eeg)
 
         if self.labels:
-            return y, label
+            return x, label
         elif self.return_path:
-            return (y, eeg_paths)
+            return (x, eeg_paths)
         else:
-            return y
+            return x
+    #
+    # def labels_index(self, paths=None) -> [int]:
+    #     if isinstance(None, type(getattr(self, 'labels'))):
+    #         return [None] * len(paths)
+    #     if paths:
+    #         return [self.labels_kind.index(self.label_func(path)) for path in paths]
+    #     return [label for path, label in self.path_list]
 
-    def __len__(self):
-        return self.size
-
-    def _load_path_list(self, paths):
-        path_list = []
-        for path in str(paths).split(','):
-            with open(path, 'r') as f:
-                path_list.extend(f.readlines())
-
-        # removing \n character from string
-        return [p.strip() for p in path_list]
-
-    def labels_index(self, paths=None, label_func=None) -> [int]:
-        if not self.labels:
-            return [None] * len(paths)
-        if paths:
-            return [self.labels.index(label_func(path)) for path in paths]
-        return [label for path, label in self.path_list]
-
-    def pack_paths(self, path_list, label_func=None):
-        if self.duration == 1:
-            return [([p], label) for p, label in zip(path_list, self.labels_index(path_list, label_func))]
-
+    def pack_paths(self, path_list, duration):
         one_eeg = EEG.load_pkl(path_list[0])
         len_sec = one_eeg.len_sec
-        n_use_eeg = int(self.duration / len_sec)
-        assert n_use_eeg == self.duration / len_sec, 'Duration must be common multiple of {}'.format(len_sec)
+        n_use_eeg = int(duration / len_sec)
+        assert n_use_eeg == duration / len_sec, f'Duration must be common multiple of {len_sec}'
 
-        labels = self.labels_index(path_list, label_func)
-        packed_path_label_list = [(path_list[i:i + n_use_eeg], labels[i:i + n_use_eeg]) for i in
-                                  range(0, len(path_list), n_use_eeg)]
-        for i, (paths, labels) in enumerate(packed_path_label_list):
-            if len(set(labels)) != 1:
-                packed_path_label_list.pop(i)
-            else:
-                packed_path_label_list[i] = (paths, labels[0])
+        label_list = [self.label_func(path) for path in self.path_list]
+
+        if n_use_eeg == 1:
+            return [([p], label) for p, label in zip(path_list, label_list)]
+
+        packed_path_label_list = []
+        for i in range(0, len(path_list), n_use_eeg):
+            paths, labels = path_list[i:i + n_use_eeg], label_list[i:i + n_use_eeg]
+
+            # TODO ソフトラベルを作るのもあり。
+            if len(set(labels)) != 1:  # 結合したときにラベルが異なるものがある場合は、データから除外する
+                continue
+
+            packed_path_label_list.append((paths, labels[0]))
 
         return packed_path_label_list
+
+    def get_feature_size(self):
+        eeg = parse_eeg(self.path_list[0][0])
+        x = self.preprocessor.preprocess(eeg)
+        if x.size(0) == 1:
+            return x.size(1) * x.size(2)    # 1 × n_channel × freq
+        else:
+            return x.size(0) * x.size(1) * x.size(2)  # n_channel × freq × time
+
+    def get_labels(self):
+        return [label for paths, label in self.path_list]

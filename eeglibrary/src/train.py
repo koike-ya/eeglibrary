@@ -3,15 +3,12 @@ from __future__ import print_function, division
 import time
 from pathlib import Path
 
+import numpy as np
 import torch
 # from wrapper.models import adda
-from eeglibrary.eeglibrary.src import test
-from eeglibrary.eeglibrary.utils import set_eeg_conf
-from wrapper.src import AverageMeter
-from wrapper.utils import train_args, TensorBoardLogger, set_model, set_dataloader, init_device, init_seed
+from eeglibrary.src import test
 from sklearn.metrics import log_loss
 from sklearn.preprocessing import OneHotEncoder
-import numpy as np
 
 
 def train_model(model, inputs, labels, phase, optimizer, criterion, type='nn', classes=None):

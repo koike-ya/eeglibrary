@@ -1,6 +1,6 @@
 import eeglibrary
 import numpy as np
-from eeglibrary.eeglibrary.src import eeg_loader
+from eeglibrary.src import eeg_loader
 
 
 def _load_eeg(eeg_path):
@@ -22,8 +22,6 @@ def _merge_eeg(paths):
 
 def parse_eeg(eeg_path) -> np.array:
     if isinstance(eeg_path, list):
-        eeg = _merge_eeg(eeg_path)
+        return _merge_eeg(eeg_path)
     else:
-        eeg = _load_eeg(eeg_path)
-
-    return eeg
+        return _load_eeg(eeg_path)

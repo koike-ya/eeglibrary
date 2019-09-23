@@ -1,4 +1,4 @@
-from eeglibrary.eeglibrary.src.EEG import EEG
+from eeglibrary.src.EEG import EEG
 from scipy.io import loadmat
 
 

@@ -1,9 +1,7 @@
-import eeglibrary
-import numpy as np
-from scipy.signal import butter, lfilter
-import scipy.signal
 import librosa
+import scipy.signal
 import torch
+from scipy.signal import butter, lfilter
 
 windows = {'hamming': scipy.signal.hamming, 'hann': scipy.signal.hann, 'blackman': scipy.signal.blackman,
            'bartlett': scipy.signal.bartlett}
@@ -20,7 +18,7 @@ def to_spect(eeg, window_size, window_stride, window):
         D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
                          win_length=win_length, window=windows[window])
         spect, phase = librosa.magphase(D)
-        spect = torch.FloatTensor(spect)
+        spect = torch.from_numpy(spect)
         spect_tensor = torch.cat((spect_tensor, spect.view(1, spect.size(0), -1)), 0)
 
     return spect_tensor

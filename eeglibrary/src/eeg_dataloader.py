@@ -1,7 +1,4 @@
-from torch.utils.data import DataLoader
-import torch
-import numpy as np
-from wrapper.src import WrapperDataLoader
+from ml.src.dataloader import WrapperDataLoader
 
 
 class EEGDataLoader(WrapperDataLoader):
