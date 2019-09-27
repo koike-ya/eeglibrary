@@ -25,7 +25,9 @@ class EEGDataSet(ManifestDataSet):
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
         eeg = parse_eeg(eeg_paths)
+        # TODO multi channel でRNNをどう使うか
         x = self.preprocessor.preprocess(eeg)
+        x = x.narrow(0, 0, 1).squeeze(dim=0)   # channel 次元を一つだけ取り出す
 
         if self.labels:
             return x, label
@@ -33,13 +35,6 @@ class EEGDataSet(ManifestDataSet):
             return (x, eeg_paths)
         else:
             return x
-    #
-    # def labels_index(self, paths=None) -> [int]:
-    #     if isinstance(None, type(getattr(self, 'labels'))):
-    #         return [None] * len(paths)
-    #     if paths:
-    #         return [self.labels_kind.index(self.label_func(path)) for path in paths]
-    #     return [label for path, label in self.path_list]
 
     def pack_paths(self, path_list, duration):
         one_eeg = EEG.load_pkl(path_list[0])
@@ -67,10 +62,12 @@ class EEGDataSet(ManifestDataSet):
     def get_feature_size(self):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
-        if x.size(0) == 1:
-            return x.size(1) * x.size(2)    # 1 × n_channel × freq
-        else:
-            return x.size(0) * x.size(1) * x.size(2)  # n_channel × freq × time
+        return x.size(1)  # freq
+
+    def get_seq_len(self):
+        eeg = parse_eeg(self.path_list[0][0])
+        x = self.preprocessor.preprocess(eeg)
+        return x.size(2)  # time
 
     def get_labels(self):
         return [label for paths, label in self.path_list]

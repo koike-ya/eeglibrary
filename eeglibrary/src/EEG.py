@@ -2,6 +2,9 @@ import copy
 import pickle
 import numpy as np
 import scipy
+from tqdm import tqdm
+from collections import OrderedDict
+from joblib import Parallel, delayed
 
 
 FILE_FORMAT = ['.mat', '.pkl']
@@ -45,7 +48,7 @@ class EEG:
     def from_edf(cls, edf):
         n = edf.signals_in_file
         signals = np.zeros((n, edf.getNSamples()[0]))
-        for i in np.arange(n):
+        for i in tqdm(np.arange(n)):
             try:
                 signals[i, :] = edf.readSignal(i)
             except ValueError as e:
@@ -61,23 +64,31 @@ class EEG:
         with open(file_path, mode='wb') as f:
             pickle.dump(self, f)
 
-    def split(self, window_size=0.5, window_stride='same', padding='same') -> list:
+    def _validate_values(self, window_size, window_stride, padding):
+        if window_stride == 'same' or float(window_stride) == 0.0:
+            window_stride = window_size
+
+        n_eeg = (self.len_sec - window_size) // window_stride + 1
+
+        if padding == 'same':
+            padding = (self.len_sec - n_eeg * window_stride) // 2
+        else:
+            n_eeg = (self.len_sec + padding * 2 - window_size) // window_stride
+
+        return int(n_eeg), window_stride, padding
+
+    def split(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1) -> list:
         assert float(window_size) != 0.0, 'window_size must be over 0.'
 
-        def validate_values(window_stride, padding):
-            if window_stride == 'same' or float(window_stride) == 0.0:
-                window_stride = window_size
+        def split_(j):
+            start_index = int(j * self.sr * window_stride)
+            eeg = EEG(None, self.channel_list, self.len_sec, self.sr, self.header)
+            eeg.values = self.values[:, start_index:start_index + duration]
+            assert eeg.values.shape[1] == duration
+            eeg.len_sec = window_size
+            return eeg
 
-            n_eeg = (self.len_sec - window_size) // window_stride + 1
-
-            if padding == 'same':
-                padding = (self.len_sec - n_eeg * window_stride) // 2
-            else:
-                n_eeg = (self.len_sec + padding * 2 - window_size) // window_stride
-
-            return int(n_eeg), window_stride, padding
-
-        n_eeg, window_stride, padding = validate_values(window_stride, padding)
+        n_eeg, window_stride, padding = self._validate_values(window_size, window_stride, padding)
 
         # add padding
         n_channel = len(self.channel_list)
@@ -85,14 +96,8 @@ class EEG:
         if padding:
             padded_waves = np.hstack((pad_matrix, self.values, pad_matrix))
 
-        splitted_eegs = []
         duration = int(window_size * self.sr)
-        for i in range(n_eeg):
-            eeg = copy.deepcopy(self)
-            start_index = int(i * self.sr * window_stride)
-            eeg.values = self.values[:, start_index:start_index + duration]
-            eeg.len_sec = window_size
-            splitted_eegs.append(eeg)
+        splitted_eegs = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
 
         return splitted_eegs
 
@@ -102,5 +107,17 @@ class EEG:
             try:
                 resampled[i, :] = scipy.signal.resample(self.values[i], int(n_resample * self.len_sec))
             except ValueError as e:
-                a = ''
+                exit(1)
         return resampled
+
+
+if __name__ == '__main__':
+    import pyedflib
+    edfreader = pyedflib.EdfReader('/media/tomoya/SSD-PGU3/research/brain/children/YJ0112PQ_1-1.edf')
+    eeg = EEG.from_edf(edfreader)
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    # for i in range(44):
+    print(pd.DataFrame(eeg.values).std(axis=1))
+    # plt.show()
+    a = ''
