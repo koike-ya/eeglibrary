@@ -85,6 +85,7 @@ class EEG:
             eeg = EEG(None, self.channel_list, self.len_sec, self.sr, self.header)
             eeg.values = self.values[:, start_index:start_index + duration]
             assert eeg.values.shape[1] == duration
+            assert not np.isnan(np.sum(eeg.values))
             eeg.len_sec = window_size
             return eeg
 

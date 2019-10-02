@@ -5,7 +5,7 @@ from ml.src.dataset import ManifestDataSet
 
 
 class EEGDataSet(ManifestDataSet):
-    def __init__(self, manifest_path, data_conf, to_1d=False, normalize=False, augment=False,
+    def __init__(self, manifest_path, data_conf, normalize=False, augment=False,
                  device='cpu', return_path=False):
         """
         data_conf: {
@@ -17,7 +17,7 @@ class EEGDataSet(ManifestDataSet):
         """
         super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=data_conf['load_func'],
                                          label_func=data_conf['label_func'])
-        self.preprocessor = Preprocessor(data_conf, normalize, augment, to_1d, scaling_axis=None)
+        self.preprocessor = Preprocessor(data_conf, normalize, augment, data_conf['to_1d'], scaling_axis=None)
         # self.suffix = self.path_list[0][-4:]
         self.path_list = self.pack_paths(self.path_list, data_conf['duration'])
         self.return_path = return_path
@@ -25,9 +25,13 @@ class EEGDataSet(ManifestDataSet):
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
         eeg = parse_eeg(eeg_paths)
+        import numpy as np
+        eeg.values = np.nan_to_num(eeg.values)
         # TODO multi channel でRNNをどう使うか
-        x = self.preprocessor.preprocess(eeg)
-        x = x.narrow(0, 0, 1).squeeze(dim=0)   # channel 次元を一つだけ取り出す
+        try:
+            x = self.preprocessor.preprocess(eeg)
+        except np.linalg.LinAlgError as e:
+            return self.__getitem__(idx + 1)
 
         if self.labels:
             return x, label
@@ -62,12 +66,26 @@ class EEGDataSet(ManifestDataSet):
     def get_feature_size(self):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
+        if len(x.size()) == 1:
+            return x.size(0)
         return x.size(1)  # freq
 
     def get_seq_len(self):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
+        if len(x.size()) == 1:
+            return x.size(0)
         return x.size(2)  # time
 
     def get_labels(self):
         return [label for paths, label in self.path_list]
+
+    def get_image_size(self):
+        eeg = parse_eeg(self.path_list[0][0])
+        x = self.preprocessor.preprocess(eeg)
+        return x.size(1), x.size(2)
+
+    def get_image_channels(self):
+        eeg = parse_eeg(self.path_list[0][0])
+        x = self.preprocessor.preprocess(eeg)
+        return x.size(0)

@@ -15,7 +15,11 @@ def _merge_eeg(paths):
     eeg = _load_eeg(paths[0])
     if len(paths) != 1:
         for path in paths[1:]:
-            eeg.values = np.hstack((eeg.values, _load_eeg(path).values))
+            try:
+                eeg.values = np.hstack((eeg.values, _load_eeg(path).values))
+            except ValueError as e:
+                _ = _load_eeg(path).values
+                a = ''
     eeg.len_sec = eeg.len_sec * len(paths)
     return eeg
 

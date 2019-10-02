@@ -42,7 +42,7 @@ class Preprocessor:
         self.to_1d = to_1d
         self.time_corr = True
         self.freq_corr = True
-        self.eig_values = True
+        self.use_eig_values = True
         self.scaling_axis = scaling_axis
 
     def _calc_correlation(self, matrix):
@@ -58,7 +58,7 @@ class Preprocessor:
         if space == 'freq':
             corr_matrix = self._calc_correlation(np.absolute(np.fft.rfft(eeg.values, axis=1)))
             y = flatten_corr_upper_right(corr_matrix)
-        if self.eig_values:
+        if self.use_eig_values:
             y = np.hstack((y, calc_eigen_values_sorted(corr_matrix)))
         return y
 
@@ -79,6 +79,7 @@ class Preprocessor:
                 y = np.hstack((y, self.calc_corr_frts(eeg, 'time')))
             if self.freq_corr:
                 y = np.hstack((y, self.calc_corr_frts(eeg, 'freq')))
+                y = torch.from_numpy(y)
         elif self.spect:
             y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
         else:
