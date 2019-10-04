@@ -1,3 +1,4 @@
+import numpy as np
 from eeglibrary.src import EEG
 from eeglibrary.src.eeg_parser import parse_eeg
 from eeglibrary.src.preprocessor import Preprocessor
@@ -21,17 +22,21 @@ class EEGDataSet(ManifestDataSet):
         # self.suffix = self.path_list[0][-4:]
         self.path_list = self.pack_paths(self.path_list, data_conf['duration'])
         self.return_path = return_path
+        self.model_type = data_conf['model_type']
+        self.processed_input_size = self.get_processed_size()
+        self.batch_size = data_conf['batch_size']
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
-        eeg = parse_eeg(eeg_paths)
-        import numpy as np
-        eeg.values = np.nan_to_num(eeg.values)
-        # TODO multi channel でRNNをどう使うか
+        eeg_ = parse_eeg(eeg_paths)
+        # import numpy as np
+        # eeg.values = np.nan_to_num(eeg.values)
         try:
-            x = self.preprocessor.preprocess(eeg)
+            x = self.preprocessor.preprocess(eeg_)
         except np.linalg.LinAlgError as e:
             return self.__getitem__(idx + 1)
+
+        x = self._reshape_input(x)
 
         if self.labels:
             return x, label
@@ -39,6 +44,11 @@ class EEGDataSet(ManifestDataSet):
             return (x, eeg_paths)
         else:
             return x
+
+    def _reshape_input(self, x):
+        if len(self.processed_input_size) == 3 and self.model_type == 'rnn':
+            x = x.reshape(self.processed_input_size[0], -1, self.processed_input_size[2])
+        return x
 
     def pack_paths(self, path_list, duration):
         one_eeg = EEG.load_pkl(path_list[0])
@@ -53,7 +63,10 @@ class EEGDataSet(ManifestDataSet):
 
         packed_path_label_list = []
         for i in range(0, len(path_list), n_use_eeg):
+            if i + n_use_eeg >= len(path_list):
+                continue
             paths, labels = path_list[i:i + n_use_eeg], label_list[i:i + n_use_eeg]
+            assert len(paths) == n_use_eeg
 
             # TODO ソフトラベルを作るのもあり。
             if len(set(labels)) != 1:  # 結合したときにラベルが異なるものがある場合は、データから除外する
@@ -63,29 +76,42 @@ class EEGDataSet(ManifestDataSet):
 
         return packed_path_label_list
 
-    def get_feature_size(self):
-        eeg = parse_eeg(self.path_list[0][0])
-        x = self.preprocessor.preprocess(eeg)
-        if len(x.size()) == 1:
-            return x.size(0)
-        return x.size(1)  # freq
-
-    def get_seq_len(self):
-        eeg = parse_eeg(self.path_list[0][0])
-        x = self.preprocessor.preprocess(eeg)
-        if len(x.size()) == 1:
-            return x.size(0)
-        return x.size(2)  # time
-
     def get_labels(self):
         return [label for paths, label in self.path_list]
 
-    def get_image_size(self):
+    def get_processed_size(self):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
-        return x.size(1), x.size(2)
+        return x.size()
 
-    def get_image_channels(self):
-        eeg = parse_eeg(self.path_list[0][0])
-        x = self.preprocessor.preprocess(eeg)
-        return x.size(0)
+    def get_feature_size(self):
+        if self.model_type == 'rnn':
+            return self.get_processed_size()[0]
+        elif self.model_type in ['2d_cnn', 'cnn_rnn']:
+            return self.get_image_size()
+
+    def get_seq_len(self):
+        size = self.get_processed_size()
+        if len(size) == 2:
+            return size[1]
+        elif len(size) == 3:
+            return size[2]
+        else:
+            NotImplementedError
+
+    def get_batch_norm_size(self, sequense_wise=False):
+        size = self.get_processed_size()
+        if not sequense_wise:
+            return self.batch_size
+
+        if self.model_type in ['rnn', 'cnn_rnn']:
+            return size[1]  # b x f x t -> t x b x f になったあと、(t x b) x fになるので、fを返す
+        else:
+            NotImplementedError
+
+    def get_image_size(self):
+        size = self.get_processed_size()
+        return size(1), size(2)
+
+    def get_n_channels(self):
+        return self.get_processed_size()[0]

@@ -41,8 +41,8 @@ class EEG:
     @classmethod
     def load_pkl(cls, file_path):
         with open(file_path, mode='rb') as f:
-            eeg = pickle.load(f)
-        return eeg
+            eeg_ = pickle.load(f)
+        return eeg_
 
     @classmethod
     def from_edf(cls, edf):
@@ -75,6 +75,8 @@ class EEG:
         else:
             n_eeg = (self.len_sec + padding * 2 - window_size) // window_stride
 
+        assert self.values.shape[1] >= int(self.len_sec * self.sr)
+
         return int(n_eeg), window_stride, padding
 
     def split(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1) -> list:
@@ -98,7 +100,9 @@ class EEG:
             padded_waves = np.hstack((pad_matrix, self.values, pad_matrix))
 
         duration = int(window_size * self.sr)
+
         splitted_eegs = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
+        # splitted_eegs = [split_(i) for i in range(n_eeg)]
 
         return splitted_eegs
 

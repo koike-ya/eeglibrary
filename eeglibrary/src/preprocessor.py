@@ -63,6 +63,7 @@ class Preprocessor:
         return y
 
     def preprocess(self, eeg):
+
         if self.sr != eeg.sr:
             eeg.values = eeg.resample(self.sr)
             eeg.sr = self.sr
@@ -83,7 +84,7 @@ class Preprocessor:
         elif self.spect:
             y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
         else:
-            y = torch.from_numpy(eeg.values).view(eeg.values.shape[0], 1, eeg.values.shape[1])  # channel x 1 x time
+            y = torch.from_numpy(eeg.values)  # channel x time
 
         if self.normalize:
             # TODO Feature(time) axis normalization, Index(channel) axis normalization

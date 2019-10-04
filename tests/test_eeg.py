@@ -1,5 +1,5 @@
 from unittest import TestCase
-from eeglibrary.src.EEG import EEG
+from eeglibrary.src.eeg import EEG
 from pathlib import Path
 from eeglibrary.src.eeg_loader import from_mat
 
