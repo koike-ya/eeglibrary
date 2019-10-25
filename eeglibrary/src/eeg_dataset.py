@@ -6,7 +6,7 @@ from ml.src.dataset import ManifestDataSet
 
 
 class EEGDataSet(ManifestDataSet):
-    def __init__(self, manifest_path, data_conf, normalize=False, augment=False,
+    def __init__(self, manifest_path, data_conf, phase, load_func, label_func, normalize=False, augment=False,
                  device='cpu', return_path=False):
         """
         data_conf: {
@@ -16,11 +16,10 @@ class EEGDataSet(ManifestDataSet):
         }
 
         """
-        super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=data_conf['load_func'],
-                                         label_func=data_conf['label_func'])
+        super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=load_func, label_func=label_func)
         self.preprocessor = Preprocessor(data_conf, normalize, augment, data_conf['to_1d'], scaling_axis=None)
         # self.suffix = self.path_list[0][-4:]
-        self.path_list = self.pack_paths(self.path_list, data_conf['duration'])
+        self.path_list = self.pack_paths(self.path_list, data_conf['duration'], data_conf['n_use_eeg'])
         self.return_path = return_path
         self.model_type = data_conf['model_type']
         self.processed_input_size = self.get_processed_size()
@@ -50,11 +49,12 @@ class EEGDataSet(ManifestDataSet):
             x = x.reshape(self.processed_input_size[0], -1, self.processed_input_size[2])
         return x
 
-    def pack_paths(self, path_list, duration):
+    def pack_paths(self, path_list, duration, n_use_eeg):
         one_eeg = EEG.load_pkl(path_list[0])
         len_sec = one_eeg.len_sec
-        n_use_eeg = int(duration / len_sec)
-        assert n_use_eeg == duration / len_sec, f'Duration must be common multiple of {len_sec}'
+        if not n_use_eeg:
+            n_use_eeg = int(duration / len_sec)
+            assert n_use_eeg == duration / len_sec, f'Duration must be common multiple of {len_sec}'
 
         label_list = [self.label_func(path) for path in self.path_list]
 
