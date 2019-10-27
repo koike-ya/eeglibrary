@@ -13,6 +13,7 @@ def preprocess_args(parser):
                         help='Use random tempo and gain perturbations.')
     prep_parser.add_argument('--duration', default=10.0, type=float, help='Duration of one EEG dataset')
     prep_parser.add_argument('--n-use-eeg', default=4, type=int, help='Number of eeg to use')
+    prep_parser.add_argument('--n-features', type=int, help='Number of features to reshape from 1 channel feature')
     prep_parser.add_argument('--window-size', default=4.0, type=float, help='Window size for spectrogram in seconds')
     prep_parser.add_argument('--window-stride', default=2.0, type=float, help='Window stride for spectrogram in seconds')
     prep_parser.add_argument('--window', default='hamming', help='Window type for spectrogram generation')
@@ -38,6 +39,7 @@ class Preprocessor:
             self.window_stride = eeg_conf['window_stride']
             self.window_size = eeg_conf['window_size']
             self.window = eeg_conf['window']
+        self.n_features = eeg_conf['n_features']
         self.normalize = normalize
         self.augment = augment
         self.to_1d = to_1d
@@ -91,6 +93,9 @@ class Preprocessor:
             # TODO Feature(time) axis normalization, Index(channel) axis normalization
             raise NotImplementedError
             # y = (y - y.mean()).div(y.std())
+
+        if self.n_features:
+            y = y.reshape(self.n_features, -1)
 
         return y
 
