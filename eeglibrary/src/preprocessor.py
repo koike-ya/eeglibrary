@@ -67,7 +67,7 @@ class Preprocessor:
 
     def preprocess(self, eeg):
 
-        if self.sr != 'same' and self.sr != eeg.sr:
+        if self.sr != 'same' and int(self.sr) != eeg.sr:
             eeg.values = eeg.resample(self.sr)
             eeg.sr = self.sr
 
