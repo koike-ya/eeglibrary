@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from eeglibrary.src.signal_processor import to_spect
+from eeglibrary.src.chb_mit_cnn_spectrogram import createSpec
 from sklearn import preprocessing
 
 
@@ -85,7 +86,8 @@ class Preprocessor:
                 y = np.hstack((y, self.calc_corr_frts(eeg, 'freq')))
                 y = torch.from_numpy(y)
         elif self.spect:
-            y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
+            # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
+            y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
         else:
             y = torch.from_numpy(eeg.values)  # channel x time
 
