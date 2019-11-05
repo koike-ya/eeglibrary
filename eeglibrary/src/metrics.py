@@ -46,18 +46,18 @@ class Metric:
         if self.name == 'loss':
             self.average_meter[phase].update(loss_value / n_example, n_example)
         elif self.name == 'recall':
-            self.average_meter[phase].update(recall_rate(preds, labels, numpy))
+            self.average_meter[phase].update(recall_rate(labels, preds, numpy))
         elif self.name == 'far':
-            self.average_meter[phase].update(false_detection_rate(preds, labels, classes, numpy))
+            self.average_meter[phase].update(false_detection_rate(labels, preds, numpy))
         elif self.name == 'accuracy':
-            self.average_meter[phase].update(accuracy(preds, labels, classes, numpy))
+            self.average_meter[phase].update(accuracy(labels, preds, numpy))
         elif self.name == 'confusion_matrix':
-            self.average_meter[phase].update(confusion_matrix_(preds, labels, classes, numpy))
+            self.average_meter[phase].update(confusion_matrix_(labels, preds, classes, numpy))
         else:
             raise NotImplementedError
 
 
-def recall_rate(pred, true, numpy=False):
+def recall_rate(true, pred, numpy=True):
     # When labels are multi class recall is invalid.
     if numpy:
         return recall_score(true, pred)
@@ -71,7 +71,7 @@ def recall_rate(pred, true, numpy=False):
     return tp.div(torch.add(tp, fn)).item()
 
 
-def false_detection_rate(pred, true, classes, numpy=False):
+def false_detection_rate(true, pred, numpy=True):
     if numpy:
         return np.dot(true == 0, pred == 1) / len(pred)
 
@@ -79,7 +79,7 @@ def false_detection_rate(pred, true, classes, numpy=False):
     return fp.div(len(pred)).item()
 
 
-def accuracy(pred, true, classes, numpy=False):
+def accuracy(true, pred, numpy=False):
     if numpy:
         return accuracy_score(true, pred)
 
@@ -90,7 +90,7 @@ def accuracy(pred, true, classes, numpy=False):
     return (tp + tn).div(len(pred)).item()
 
 
-def confusion_matrix_(pred, true, classes, numpy):
+def confusion_matrix_(true, pred, classes, numpy):
     if numpy:
         return confusion_matrix(true, pred)
 

@@ -24,11 +24,11 @@ class EEGDataLoader(WrapperDataLoader):
         return self.dataset.get_seq_len()
 
 
-def set_dataloader(dataset, phase, cfg, shuffle=False):
+def set_dataloader(dataset, phase, cfg):
     if phase in ['test', 'infer']:
         # TODO batch normalization をeval()してdrop_lastしなくてよいようにする。
         dataloader = EEGDataLoader(model_type=cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
-                                   num_workers=cfg['n_jobs'], pin_memory=True, sampler=None, shuffle=shuffle, drop_last=True)
+                                   num_workers=cfg['n_jobs'], pin_memory=True, sampler=None, shuffle=False)
     else:
         if sum(cfg['sample_balance']) != 0.0:
             if cfg['task_type'] == 'classify':
@@ -41,6 +41,6 @@ def set_dataloader(dataset, phase, cfg, shuffle=False):
             sampler = None
         dataloader = EEGDataLoader(cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
                                    num_workers=cfg['n_jobs'], pin_memory=True, sampler=sampler, drop_last=True,
-                                   shuffle=shuffle)
+                                   shuffle=True)
 
     return dataloader
