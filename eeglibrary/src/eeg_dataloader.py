@@ -24,7 +24,7 @@ class EEGDataLoader(WrapperDataLoader):
         return self.dataset.get_seq_len()
 
 
-def set_dataloader(dataset, phase, cfg):
+def set_dataloader(dataset, phase, cfg, shuffle=True):
     if phase in ['test', 'infer']:
         # TODO batch normalization をeval()してdrop_lastしなくてよいようにする。
         dataloader = EEGDataLoader(model_type=cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
@@ -37,10 +37,11 @@ def set_dataloader(dataset, phase, cfg):
             else:
                 weights = [torch.Tensor([1.0])] * len(dataset.get_labels())
             sampler = WeightedRandomSampler(weights, int(len(dataset) * cfg['epoch_rate']))
+            shuffle = False
         else:
             sampler = None
         dataloader = EEGDataLoader(cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
                                    num_workers=cfg['n_jobs'], pin_memory=True, sampler=sampler, drop_last=True,
-                                   shuffle=True)
+                                   shuffle=shuffle)
 
     return dataloader

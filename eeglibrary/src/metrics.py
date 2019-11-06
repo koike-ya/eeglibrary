@@ -24,14 +24,16 @@ class AverageMeter(object):
         self.average = self.sum / self.count
 
     def update_best(self):
-        if self.inequality == 'more':
-            if self.average > self.best_score:
+        if self.direction == 'maximize':
+            if self.average >= self.best_score:
+                self.best_score = self.average
+                return True
+        elif self.direction == 'minimize':
+            if self.average <= self.best_score:
                 self.best_score = self.average
                 return True
         else:
-            if self.average < self.best_score:
-                self.best_score = self.average
-                return True
+            raise NotImplementedError('direction needs to be either maximize or minimize when update the best score.')
         return False
 
 

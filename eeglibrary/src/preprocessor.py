@@ -25,7 +25,7 @@ def preprocess_args(parser):
     prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='Low pass filter')
     prep_parser.add_argument('--high-cutoff', default=10000.0, type=float, help='High pass filter')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
-    prep_parser.add_argument('--to_1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
+    prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
     return parser
 
