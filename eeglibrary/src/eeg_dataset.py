@@ -111,7 +111,7 @@ class EEGDataSet(ManifestDataSet):
 
     def get_image_size(self):
         size = self.get_processed_size()
-        return size(1), size(2)
+        return size[1], size[2]
 
     def get_n_channels(self):
         return self.get_processed_size()[0]
