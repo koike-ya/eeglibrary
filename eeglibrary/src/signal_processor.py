@@ -32,7 +32,7 @@ def butter_filter(y, cutoff, fs, btype='lowpass', order=5):
     return y
 
 
-def bandpass_filter(h_cutoff, l_cutoff, sr, y):
+def bandpass_filter(y, l_cutoff, h_cutoff, sr):
     def _lowpass_filter(y):
         return butter_filter(y, h_cutoff, sr, 'lowpass', order=4)
 

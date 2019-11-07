@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from eeglibrary.src.signal_processor import to_spect
+from eeglibrary.src.signal_processor import to_spect, bandpass_filter
 from eeglibrary.src.chb_mit_cnn_spectrogram import createSpec
 from sklearn import preprocessing
 
@@ -22,8 +22,8 @@ def preprocess_args(parser):
     prep_parser.add_argument('--sample-rate', default='same', help='Sample rate')
     prep_parser.add_argument('--num-eigenvalue', default=0, type=int,
                              help='Number of eigen values to use from spectrogram')
-    prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='Low pass filter')
-    prep_parser.add_argument('--high-cutoff', default=10000.0, type=float, help='High pass filter')
+    prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='High pass filter')
+    prep_parser.add_argument('--high-cutoff', default=100.0, type=float, help='Low pass filter')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
@@ -71,6 +71,8 @@ class Preprocessor:
         if self.sr != 'same' and int(self.sr) != eeg.sr:
             eeg.values = eeg.resample(self.sr)
             eeg.sr = self.sr
+
+        eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
         if self.augment:
             raise NotImplementedError
