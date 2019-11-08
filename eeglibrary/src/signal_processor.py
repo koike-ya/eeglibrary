@@ -12,6 +12,7 @@ def to_spect(eeg, window_size, window_stride, window):
     win_length = n_fft
     hop_length = int(eeg.sr * window_stride)
     spect_tensor = torch.Tensor()
+
     # STFT
     for i in range(len(eeg.channel_list)):
         y = eeg.values[i].astype(float)

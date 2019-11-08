@@ -88,8 +88,8 @@ class Preprocessor:
                 y = np.hstack((y, self.calc_corr_frts(eeg, 'freq')))
                 y = torch.from_numpy(y)
         elif self.spect:
-            # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
-            y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
+            y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
+            # y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
         else:
             y = torch.from_numpy(eeg.values)  # channel x time
 

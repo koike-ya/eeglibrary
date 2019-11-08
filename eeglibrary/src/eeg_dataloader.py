@@ -41,7 +41,7 @@ def set_dataloader(dataset, phase, cfg, shuffle=True):
         else:
             sampler = None
         dataloader = EEGDataLoader(cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
-                                   num_workers=cfg['n_jobs'], pin_memory=True, sampler=sampler, drop_last=True,
+                                   num_workers=cfg['n_jobs'], pin_memory=True, sampler=sampler,
                                    shuffle=shuffle)
 
     return dataloader
