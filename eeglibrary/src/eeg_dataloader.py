@@ -25,6 +25,8 @@ class EEGDataLoader(WrapperDataLoader):
 
 
 def set_dataloader(dataset, phase, cfg, shuffle=True):
+    if isinstance(cfg['sample_balance'], str):
+        cfg['sample_balance'] = [1.0] * len(cfg['class_names'])
     if phase in ['test', 'infer']:
         # TODO batch normalization をeval()してdrop_lastしなくてよいようにする。
         dataloader = EEGDataLoader(model_type=cfg['model_type'], dataset=dataset, batch_size=cfg['batch_size'],
