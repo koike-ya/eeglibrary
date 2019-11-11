@@ -102,7 +102,7 @@ class EEGDataSet(ManifestDataSet):
     def get_batch_norm_size(self, sequense_wise=False):
         size = self.get_processed_size()
         if not sequense_wise:
-            return self.batch_size
+            return self.get_n_channels()
 
         if self.model_type in ['rnn', 'cnn_rnn']:
             return size[1]  # b x f x t -> t x b x f になったあと、(t x b) x fになるので、fを返す
