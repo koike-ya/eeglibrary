@@ -6,7 +6,7 @@ from ml.src.dataset import ManifestDataSet
 
 
 class EEGDataSet(ManifestDataSet):
-    def __init__(self, manifest_path, data_conf, phase, load_func, label_func, normalize=False, augment=False,
+    def __init__(self, manifest_path, data_conf, load_func, label_func, normalize=False, augment=False,
                  device='cpu', return_path=False):
         """
         data_conf: {
