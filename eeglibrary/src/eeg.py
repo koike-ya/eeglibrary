@@ -45,10 +45,10 @@ class EEG:
         return eeg_
 
     @classmethod
-    def from_edf(cls, edf):
+    def from_edf(cls, edf, verbose=True):
         n = edf.signals_in_file
         signals = np.zeros((n, edf.getNSamples()[0]))
-        for i in tqdm(np.arange(n)):
+        for i in tqdm(np.arange(n), disable=not verbose):
             try:
                 signals[i, :] = edf.readSignal(i)
             except ValueError as e:
@@ -79,6 +79,38 @@ class EEG:
 
         return int(n_eeg), window_stride, padding
 
+    def split_and_save(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1, suffix='') -> list:
+        assert float(window_size) != 0.0, 'window_size must be over 0.'
+
+        def split_(j):
+            start_index = int(j * self.sr * window_stride)
+            eeg = EEG(None, self.channel_list, self.len_sec, self.sr, self.header)
+            eeg.values = self.values[:, start_index:start_index + duration]
+            assert eeg.values.shape[1] == duration
+            assert not np.isnan(np.sum(eeg.values))
+            eeg.len_sec = window_size
+            filename = f'{start_index}_{start_index + duration}{suffix}.pkl'
+            eeg.to_pkl(filename)
+            return filename
+
+        n_eeg, window_stride, padding = self._validate_values(window_size, window_stride, padding)
+
+        # add padding
+        n_channel = len(self.channel_list)
+        pad_matrix = np.zeros((n_channel, int(padding * self.sr)))
+        if padding:
+            padded_waves = np.hstack((pad_matrix, self.values, pad_matrix))
+
+        duration = int(window_size * self.sr)
+
+        # For debugging
+        if n_jobs == 1:
+            path_list = [split_(i) for i in range(n_eeg)]
+        else:
+            path_list = Parallel(n_jobs=n_jobs, verbose=0)([delayed(split_)(i) for i in range(n_eeg)])
+
+        return path_list
+
     def split(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1) -> list:
         assert float(window_size) != 0.0, 'window_size must be over 0.'
 
@@ -101,8 +133,11 @@ class EEG:
 
         duration = int(window_size * self.sr)
 
-        splitted_eegs = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
-        # splitted_eegs = [split_(i) for i in range(n_eeg)]
+        # For debugging
+        if n_jobs == 1:
+            splitted_eegs = [split_(i) for i in range(n_eeg)]
+        else:
+            splitted_eegs = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
 
         return splitted_eegs
 
