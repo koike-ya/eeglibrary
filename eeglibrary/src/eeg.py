@@ -79,7 +79,8 @@ class EEG:
 
         return int(n_eeg), window_stride, padding
 
-    def split_and_save(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1, suffix='') -> list:
+    def split_and_save(self, window_size=0.5, window_stride='same', padding='same', n_jobs=-1, save_dir='',
+                       suffix='') -> list:
         assert float(window_size) != 0.0, 'window_size must be over 0.'
 
         def split_(j):
@@ -90,8 +91,8 @@ class EEG:
             assert not np.isnan(np.sum(eeg.values))
             eeg.len_sec = window_size
             filename = f'{start_index}_{start_index + duration}{suffix}.pkl'
-            eeg.to_pkl(filename)
-            return filename
+            eeg.to_pkl(f'{save_dir}/{filename}')
+            return f'{save_dir}/{filename}'
 
         n_eeg, window_stride, padding = self._validate_values(window_size, window_stride, padding)
 
@@ -107,7 +108,7 @@ class EEG:
         if n_jobs == 1:
             path_list = [split_(i) for i in range(n_eeg)]
         else:
-            path_list = Parallel(n_jobs=n_jobs, verbose=0)([delayed(split_)(i) for i in range(n_eeg)])
+            path_list = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
 
         return path_list
 
