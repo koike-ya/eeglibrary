@@ -48,6 +48,7 @@ class Preprocessor:
         self.freq_corr = True
         self.use_eig_values = True
         self.scaling_axis = scaling_axis
+        self.reproduce = eeg_conf['reproduce']
 
     def _calc_correlation(self, matrix):
         if self.scaling_axis:
@@ -71,6 +72,9 @@ class Preprocessor:
         if self.sr != 'same' and int(self.sr) != eeg.sr:
             eeg.values = eeg.resample(self.sr)
             eeg.sr = self.sr
+
+        if self.reproduce == 'chbmit-cnn':
+            return torch.from_numpy(createSpec(eeg.values, eeg.sr))
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 

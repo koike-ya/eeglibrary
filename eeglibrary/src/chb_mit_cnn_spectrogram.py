@@ -10,7 +10,7 @@ import os
 def createSpec(signals, sr):
     # Reference: https://github.com/MesSem/CNNs-on-CHB-MIT, DataSetToSpectrogram
 
-    n_channels = 4
+    n_channels = 22
 
     for channel in range(n_channels):
         data = signals[channel]

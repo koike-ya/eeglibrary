@@ -108,7 +108,7 @@ class EEG:
         if n_jobs == 1:
             path_list = [split_(i) for i in range(n_eeg)]
         else:
-            path_list = Parallel(n_jobs=n_jobs, verbose=1)([delayed(split_)(i) for i in range(n_eeg)])
+            path_list = Parallel(n_jobs=n_jobs, verbose=0)([delayed(split_)(i) for i in range(n_eeg)])
 
         return path_list
 
