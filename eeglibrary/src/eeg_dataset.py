@@ -1,8 +1,10 @@
 import numpy as np
+from pathlib import Path
 from eeglibrary.src import EEG
 from eeglibrary.src.eeg_parser import parse_eeg
 from eeglibrary.src.preprocessor import Preprocessor
 from ml.src.dataset import ManifestDataSet
+import torch
 
 
 class EEGDataSet(ManifestDataSet):
@@ -24,18 +26,27 @@ class EEGDataSet(ManifestDataSet):
         self.model_type = data_conf['model_type']
         self.processed_input_size = self.get_processed_size()
         self.batch_size = data_conf['batch_size']
+        self.cache = data_conf['cache']
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
-        eeg_ = parse_eeg(eeg_paths)
-        # import numpy as np
-        # eeg.values = np.nan_to_num(eeg.values)
-        try:
-            x = self.preprocessor.preprocess(eeg_)
-        except np.linalg.LinAlgError as e:
-            return self.__getitem__(idx + 1)
 
-        x = self._reshape_input(x)
+        if self.cache and Path(eeg_paths[0].replace('pkl', 'npy')).is_file():
+            x = torch.from_numpy(np.load(eeg_paths[0].replace('pkl', 'npy')))
+        else:
+            eeg_ = parse_eeg(eeg_paths)
+            # import numpy as np
+            # eeg.values = np.nan_to_num(eeg.values)
+            try:
+                x = self.preprocessor.preprocess(eeg_)
+            except np.linalg.LinAlgError as e:
+                print(e)
+                return self.__getitem__(idx + 1)
+
+            x = self._reshape_input(x)
+
+            if self.cache:
+                np.save(eeg_paths[0].replace('pkl', 'npy'), x.numpy())
 
         if self.labels:
             return x, label
