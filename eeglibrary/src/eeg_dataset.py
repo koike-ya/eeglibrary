@@ -27,7 +27,7 @@ class EEGDataSet(ManifestDataSet):
         self.processed_input_size = self.get_processed_size()
         self.batch_size = data_conf['batch_size']
         self.cache = data_conf['cache']
-        self.cached_idx = []
+        self.cached_idx = set()
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
@@ -52,7 +52,7 @@ class EEGDataSet(ManifestDataSet):
 
             if self.cache:
                 np.save(eeg_paths[0].replace('pkl', 'npy'), x.numpy())
-                self.cached_idx.append(idx)
+                self.cached_idx.add(idx)
 
         if self.labels:
             return x, label
