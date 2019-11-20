@@ -74,7 +74,7 @@ class Preprocessor:
             eeg.sr = self.sr
 
         if self.reproduce == 'chbmit-cnn':
-            return torch.from_numpy(createSpec(eeg.values, eeg.sr))
+            return torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list)))
 
         if self.reproduce == 'bonn-rnn':
             n_channel = 22

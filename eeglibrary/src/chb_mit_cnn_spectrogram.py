@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 import os
 
 
-def createSpec(signals, sr):
+def createSpec(signals, sr, n_channels=22):
     # Reference: https://github.com/MesSem/CNNs-on-CHB-MIT, DataSetToSpectrogram
 
-    n_channels = 22
+    n_channels = min(n_channels, 22)
 
     for channel in range(n_channels):
         data = signals[channel]
