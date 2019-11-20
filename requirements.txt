@@ -8,8 +8,9 @@ glibc
 tqdm
 librosa
 tensorboardX
-tensorflow
+tensorflow-gpu
 tensorboard
+keras
 lightgbm
 xgboost
 pyedflib

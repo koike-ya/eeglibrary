@@ -32,8 +32,12 @@ class EEGDataSet(ManifestDataSet):
         eeg_paths, label = self.path_list[idx]
 
         if self.cache and Path(eeg_paths[0].replace('pkl', 'npy')).is_file():
-            x = torch.from_numpy(np.load(eeg_paths[0].replace('pkl', 'npy')))
-        else:
+            try:
+                x = torch.from_numpy(np.load(eeg_paths[0].replace('pkl', 'npy')))
+            except ValueError as e:
+                print(e)
+
+        if (not self.cache) or ('x' not in locals().keys()):
             eeg_ = parse_eeg(eeg_paths)
             # import numpy as np
             # eeg.values = np.nan_to_num(eeg.values)
