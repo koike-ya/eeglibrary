@@ -27,11 +27,12 @@ class EEGDataSet(ManifestDataSet):
         self.processed_input_size = self.get_processed_size()
         self.batch_size = data_conf['batch_size']
         self.cache = data_conf['cache']
+        self.cached_idx = []
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
 
-        if self.cache and Path(eeg_paths[0].replace('pkl', 'npy')).is_file():
+        if self.cache and idx in self.cached_idx:
             try:
                 x = torch.from_numpy(np.load(eeg_paths[0].replace('pkl', 'npy')))
             except ValueError as e:
@@ -51,6 +52,7 @@ class EEGDataSet(ManifestDataSet):
 
             if self.cache:
                 np.save(eeg_paths[0].replace('pkl', 'npy'), x.numpy())
+                self.cached_idx.append(idx)
 
         if self.labels:
             return x, label
