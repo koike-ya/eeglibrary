@@ -77,10 +77,10 @@ class Preprocessor:
             return torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list)))
 
         if self.reproduce == 'bonn-rnn':
-            n_channel = 22
-            timesteps = 15 * eeg.sr     # 15 * 256
+            n_channel = min(len(eeg.channel_list), 22)
+            timesteps = int(eeg.len_sec / 2 * eeg.sr)     # 15 * 256
             feature_dim = n_channel * eeg.values.shape[1] // timesteps     # 22 x (30 x 256) / (15 x 256) = 22 x 2
-            return torch.from_numpy(eeg.values[:-1, :].reshape((feature_dim, timesteps)).T) # 22 x (30 x 256) -> (22 x 2) x (15 x 256)
+            return torch.from_numpy(eeg.values[:n_channel, :].reshape((feature_dim, timesteps)).T) # 22 x (30 x 256) -> (22 x 2) x (15 x 256)
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
