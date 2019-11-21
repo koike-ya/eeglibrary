@@ -1,10 +1,6 @@
-import pyedflib
 import numpy as np
 from scipy import signal
 from scipy.signal import butter, lfilter
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-import os
 
 
 def createSpec(signals, sr, n_channels=22):
@@ -35,6 +31,8 @@ def createSpec(signals, sr, n_channels=22):
                     10 * np.log10(np.transpose(Pxx))).ptp()
         if channel == 0:
             spect = np.zeros((n_channels, *result.shape))
+
+        result = np.nan_to_num(result)
 
         spect[channel] = result
 
