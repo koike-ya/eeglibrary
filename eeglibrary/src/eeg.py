@@ -45,16 +45,26 @@ class EEG:
         return eeg_
 
     @classmethod
-    def from_edf(cls, edf, verbose=True):
-        n = edf.signals_in_file
-        signals = np.zeros((n, edf.getNSamples()[0]))
-        for i in tqdm(np.arange(n), disable=not verbose):
+    def from_edf(cls, edf):
+        n_channels = edf.signals_in_file
+        signals = np.zeros((n_channels, edf.getNSamples()[0]))
+
+        for i in tqdm(range(n_channels)):
             try:
                 signals[i, :] = edf.readSignal(i)
             except ValueError as e:
                 np.delete(signals, i, 0)
 
-        return EEG(signals, edf.getSignalLabels(), edf.getFileDuration(), edf.getSampleFrequencies()[0])
+        assert not np.isnan(signals).any()
+
+        channel_list = edf.getSignalLabels()
+        len_sec = edf.getFileDuration()
+        sr = edf.getSampleFrequencies()[0]
+
+        edf._close()
+        del edf
+
+        return EEG(signals, channel_list, len_sec, sr)
 
     def __repr__(self):
         self.info()
