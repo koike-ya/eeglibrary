@@ -16,10 +16,11 @@ def to_spect(eeg, window_size, window_stride, window):
     # STFT
     for i in range(len(eeg.channel_list)):
         y = eeg.values[i].astype(float)
-        D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
-                         win_length=win_length, window=windows[window])
-        spect, phase = librosa.magphase(D)
-        spect = torch.from_numpy(spect)
+        # D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
+        #                  win_length=win_length, window=windows[window])
+        # spect, phase = librosa.magphase(D)
+        spect = scipy.signal.spectrogram(y, nfft=n_fft, fs=eeg.sr, return_onesided=True, noverlap=eeg.sr // 2)[2]
+        spect = torch.from_numpy(spect).to(torch.float32)
         spect_tensor = torch.cat((spect_tensor, spect.view(1, spect.size(0), -1)), 0)
 
     return spect_tensor
