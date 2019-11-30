@@ -11,12 +11,13 @@ def createSpec(signals, sr, n_channels=22):
     for channel in range(n_channels):
         y = signals[channel]
 
-        Pxx = signal.spectrogram(y, nfft=sr, fs=sr, return_onesided=True, noverlap=sr // 2)[2]
+        Pxx = signal.spectrogram(y, nfft=sr, fs=sr, return_onesided=True, noverlap=128)[2]
         Pxx = np.delete(Pxx, np.s_[117:123 + 1], axis=0)
         Pxx = np.delete(Pxx, np.s_[57:63 + 1], axis=0)
         Pxx = np.delete(Pxx, 0, axis=0)
+        Pxx = Pxx + 0.000001
 
-        result = ((10 * np.log10(Pxx.T) - (10 * np.log10(Pxx.T)).min(axis=0)) / (10 * np.log10(Pxx.T)).ptp(axis=0))
+        result = ((10 * np.log10(Pxx).T - (10 * np.log10(Pxx)).T.mean(axis=0)) / (10 * np.log10(Pxx)).T.std(axis=0))
 
         if channel == 0:
             spect = np.zeros((n_channels, *result.shape))
