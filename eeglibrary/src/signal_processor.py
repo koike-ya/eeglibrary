@@ -1,6 +1,7 @@
 import librosa
 import scipy.signal
 import torch
+import numpy as np
 from scipy.signal import butter, lfilter
 
 windows = {'hamming': scipy.signal.hamming, 'hann': scipy.signal.hann, 'blackman': scipy.signal.blackman,
@@ -24,6 +25,23 @@ def to_spect(eeg, window_size, window_stride, window):
         spect_tensor = torch.cat((spect_tensor, spect.view(1, spect.size(0), -1)), 0)
 
     return spect_tensor
+
+
+def add_muscle_noise(y, sr):
+    muscle_noise = np.random.normal(0, 1, y.shape[1])
+    y += bandpass_filter(muscle_noise, l_cutoff=20, h_cutoff=60, sr=sr) * 10
+    return y
+
+
+def add_eye_noise(y, sr):
+    muscle_noise = np.random.normal(0, 1, y.shape[1])
+    y += bandpass_filter(muscle_noise, l_cutoff=1, h_cutoff=2, sr=sr) * 10
+    return y
+
+
+def add_white_noise(y, sr):
+    y += np.random.normal(0, 1, y.shape[1]) * 10
+    return y
 
 
 def butter_filter(y, cutoff, fs, btype='lowpass', order=5):

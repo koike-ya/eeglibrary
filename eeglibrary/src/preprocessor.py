@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from eeglibrary.src.signal_processor import to_spect, bandpass_filter
+from eeglibrary.src.signal_processor import to_spect, bandpass_filter, add_muscle_noise, add_eye_noise, add_white_noise
 from eeglibrary.src.chb_mit_cnn_spectrogram import createSpec
 from sklearn import preprocessing
 
@@ -13,7 +13,7 @@ def preprocess_args(parser):
     prep_parser.add_argument('--augment', dest='augment', action='store_true',
                         help='Use random tempo and gain perturbations.')
     prep_parser.add_argument('--duration', default=10.0, type=float, help='Duration of one EEG dataset')
-    prep_parser.add_argument('--n-use-eeg', default=4, type=int, help='Number of eeg to use')
+    prep_parser.add_argument('--n-use-eeg', default=1, type=int, help='Number of eeg to use')
     prep_parser.add_argument('--n-features', type=int, help='Number of features to reshape from 1 channel feature')
     prep_parser.add_argument('--window-size', default=4.0, type=float, help='Window size for spectrogram in seconds')
     prep_parser.add_argument('--window-stride', default=2.0, type=float, help='Window stride for spectrogram in seconds')
@@ -23,7 +23,7 @@ def preprocess_args(parser):
     prep_parser.add_argument('--num-eigenvalue', default=0, type=int,
                              help='Number of eigen values to use from spectrogram')
     prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='High pass filter')
-    prep_parser.add_argument('--high-cutoff', default=100.0, type=float, help='Low pass filter')
+    prep_parser.add_argument('--high-cutoff', default=200.0, type=float, help='Low pass filter')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
@@ -31,7 +31,7 @@ def preprocess_args(parser):
 
 
 class Preprocessor:
-    def __init__(self, eeg_conf, normalize=False, augment=False, to_1d=False, scaling_axis=None):
+    def __init__(self, eeg_conf, to_1d=False, scaling_axis=None):
         self.sr = eeg_conf['sample_rate']
         self.l_cutoff = eeg_conf['low_cutoff']
         self.h_cutoff = eeg_conf['high_cutoff']
@@ -41,8 +41,8 @@ class Preprocessor:
             self.window_size = eeg_conf['window_size']
             self.window = eeg_conf['window']
         self.n_features = eeg_conf['n_features']
-        self.normalize = normalize
-        self.augment = augment
+        self.normalize = eeg_conf['scaling']
+        self.augment = eeg_conf['augment']
         self.to_1d = to_1d
         self.time_corr = True
         self.freq_corr = True
@@ -85,7 +85,14 @@ class Preprocessor:
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
         if self.augment:
-            raise NotImplementedError
+            # pitch
+            # tempo
+            # gain
+            # time-warp
+            # frequency and time masking
+            eeg.values = add_muscle_noise(eeg.values, eeg.sr)
+            eeg.values = add_eye_noise(eeg.values, eeg.sr)
+            eeg.values = add_white_noise(eeg.values, eeg.sr)
 
         # Filtering
         # eeg.values = self.bandpass_filter(eeg.values)

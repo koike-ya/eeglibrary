@@ -15,9 +15,10 @@ def createSpec(signals, sr, n_channels=22):
         Pxx = np.delete(Pxx, np.s_[117:123 + 1], axis=0)
         Pxx = np.delete(Pxx, np.s_[57:63 + 1], axis=0)
         Pxx = np.delete(Pxx, 0, axis=0)
-        Pxx = Pxx + 0.000001
+        # Pxx = Pxx + 0.000001
 
-        result = ((10 * np.log10(Pxx).T - (10 * np.log10(Pxx)).T.mean(axis=0)) / (10 * np.log10(Pxx)).T.std(axis=0))
+        # result = ((10 * np.log10(Pxx).T - (10 * np.log10(Pxx)).T.mean(axis=0)) / (10 * np.log10(Pxx)).T.std(axis=0))
+        result = Pxx.T
 
         if channel == 0:
             spect = np.zeros((n_channels, *result.shape))
