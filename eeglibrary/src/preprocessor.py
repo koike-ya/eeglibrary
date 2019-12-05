@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from eeglibrary.src.signal_processor import to_spect, bandpass_filter, add_muscle_noise, add_eye_noise, add_white_noise
+from eeglibrary.src.signal_processor import *
 from eeglibrary.src.chb_mit_cnn_spectrogram import createSpec
 from sklearn import preprocessing
 
@@ -24,6 +24,7 @@ def preprocess_args(parser):
                              help='Number of eigen values to use from spectrogram')
     prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='High pass filter')
     prep_parser.add_argument('--high-cutoff', default=200.0, type=float, help='Low pass filter')
+    prep_parser.add_argument('--spec-augment', dest='spec_augment', action='store_true', help='spec-augment')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
@@ -43,6 +44,7 @@ class Preprocessor:
         self.n_features = eeg_conf['n_features']
         self.normalize = eeg_conf['scaling']
         self.augment = eeg_conf['augment']
+        self.spec_augment = eeg_conf['spec_augment']
         self.to_1d = to_1d
         self.time_corr = True
         self.freq_corr = True
@@ -85,14 +87,15 @@ class Preprocessor:
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
         if self.augment:
-            # pitch
-            # tempo
-            # gain
-            # time-warp
-            # frequency and time masking
-            eeg.values = add_muscle_noise(eeg.values, eeg.sr)
-            eeg.values = add_eye_noise(eeg.values, eeg.sr)
-            eeg.values = add_white_noise(eeg.values, eeg.sr)
+            # eeg.values = add_muscle_noise(eeg.values, eeg.sr)
+            # eeg.values = add_eye_noise(eeg.values, eeg.sr)
+            # eeg.values = add_white_noise(eeg.values, eeg.sr)
+            eeg.values = shift_gain(eeg.values, rate=np.random.normal(0.8, 1.2))
+
+            # for i in range(len(eeg.channel_list)):
+            #     eeg.values[i] = shift(eeg.values[i], eeg.sr * 5)
+            #     eeg.values[i] = stretch(eeg.values[i], rate=0.3)
+            #     eeg.values[i] = shift_pitch(eeg.values[i], rate=0.3)
 
         # Filtering
         # eeg.values = self.bandpass_filter(eeg.values)
@@ -106,6 +109,9 @@ class Preprocessor:
                 y = torch.from_numpy(y)
         elif self.spect:
             y = torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list))).to(torch.float32).transpose(1, 2)
+
+            if self.spec_augment:
+                y = time_and_freq_mask(y, rate=0.1)
             # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
             # y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
         else:

@@ -27,20 +27,66 @@ def to_spect(eeg, window_size, window_stride, window):
     return spect_tensor
 
 
+def time_and_freq_mask(data, rate):
+    w = np.random.uniform(0, data.shape[1]).astype(int)
+    tau = min(data.shape[1] - w, int(abs(np.random.normal(0, data.shape[1] * rate))))
+    data[:, w:w + tau] = 0
+
+    w = np.random.uniform(0, data.shape[0]).astype(int)
+    tau = min(data.shape[0] - w, int(abs(np.random.normal(0, data.shape[0] * rate))))
+    data[w:w + tau, :] = 0
+
+    return time_and_freq_mask()
+
+
+def speedx(sound_array, factor):
+    """ Multiplies the sound's speed by some `factor` """
+    indices = np.round(np.arange(0, len(sound_array), factor))
+    indices = indices[indices < len(sound_array)].astype(int)
+    return sound_array[indices]
+
+
+def shift_pitch(data, rate=1):
+    data = librosa.effects.time_stretch(data, rate)
+    y = speedx(data, rate)
+    # assert data.shape[0] == y.shape[0]
+    return y
+
+
+def shift_gain(y, rate=0.9):
+    return y * rate
+
+
+# stretching the sound
+def stretch(data, rate=1):
+    input_length = data.shape[0]
+    data = librosa.effects.time_stretch(data, rate)
+    if len(data) > input_length:
+        data = data[:input_length]
+    else:
+        data = np.pad(data, (0, max(0, input_length - len(data))), "constant")
+
+    return data
+
+
+def shift(y, n=500):
+    return np.roll(y, n)
+
+
 def add_muscle_noise(y, sr):
-    muscle_noise = np.random.normal(0, 1, y.shape[1])
-    y += bandpass_filter(muscle_noise, l_cutoff=20, h_cutoff=60, sr=sr) * 10
+    muscle_noise = np.random.uniform(0, 50, y.shape[1])
+    y += bandpass_filter(muscle_noise, l_cutoff=20, h_cutoff=60, sr=sr)
     return y
 
 
 def add_eye_noise(y, sr):
-    muscle_noise = np.random.normal(0, 1, y.shape[1])
-    y += bandpass_filter(muscle_noise, l_cutoff=1, h_cutoff=2, sr=sr) * 10
+    muscle_noise = np.random.uniform(0, 100, y.shape[1])
+    y += bandpass_filter(muscle_noise, l_cutoff=1, h_cutoff=3, sr=sr)
     return y
 
 
 def add_white_noise(y, sr):
-    y += np.random.normal(0, 1, y.shape[1]) * 10
+    y += np.random.randn(y.shape[1]) * 10
     return y
 
 
