@@ -24,6 +24,10 @@ def preprocess_args(parser):
                              help='Number of eigen values to use from spectrogram')
     prep_parser.add_argument('--low-cutoff', default=0.01, type=float, help='High pass filter')
     prep_parser.add_argument('--high-cutoff', default=200.0, type=float, help='Low pass filter')
+    prep_parser.add_argument('--muscle-noise', default=0.0, type=float)
+    prep_parser.add_argument('--eye-noise', default=0.0, type=float)
+    prep_parser.add_argument('--white-noise', default=0.0, type=float)
+    prep_parser.add_argument('--shift-gain', default=0.0, type=float)
     prep_parser.add_argument('--spec-augment', dest='spec_augment', action='store_true', help='spec-augment')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
@@ -43,7 +47,7 @@ class Preprocessor:
             self.window = eeg_conf['window']
         self.n_features = eeg_conf['n_features']
         self.normalize = eeg_conf['scaling']
-        self.augment = eeg_conf['augment']
+        self.cfg = eeg_conf
         self.spec_augment = eeg_conf['spec_augment']
         self.to_1d = to_1d
         self.time_corr = True
@@ -86,19 +90,20 @@ class Preprocessor:
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
-        if self.augment:
-            # eeg.values = add_muscle_noise(eeg.values, eeg.sr)
-            # eeg.values = add_eye_noise(eeg.values, eeg.sr)
-            # eeg.values = add_white_noise(eeg.values, eeg.sr)
-            eeg.values = shift_gain(eeg.values, rate=np.random.normal(0.8, 1.2))
+        if self.cfg['muscle_noise']:
+            eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
+        if self.cfg['eye_noise']:
+            eeg.values = add_eye_noise(eeg.values, eeg.sr, self.cfg['eye_noise'])
+        if self.cfg['white_noise']:
+            eeg.values = add_white_noise(eeg.values, self.cfg['white_noise'])
+        if self.cfg['shift_gain']:
+            rate = np.random.normal(1.0 - self.cfg['shift_gain'], 1.0 + self.cfg['shift_gain'])
+            eeg.values = shift_gain(eeg.values, rate=rate)
 
             # for i in range(len(eeg.channel_list)):
             #     eeg.values[i] = shift(eeg.values[i], eeg.sr * 5)
             #     eeg.values[i] = stretch(eeg.values[i], rate=0.3)
             #     eeg.values[i] = shift_pitch(eeg.values[i], rate=0.3)
-
-        # Filtering
-        # eeg.values = self.bandpass_filter(eeg.values)
 
         if self.to_1d:
             y = np.array([])

@@ -73,20 +73,20 @@ def shift(y, n=500):
     return np.roll(y, n)
 
 
-def add_muscle_noise(y, sr):
-    muscle_noise = np.random.uniform(0, 50, y.shape[1])
+def add_muscle_noise(y, sr, rate):
+    muscle_noise = np.random.uniform(0, int(y.mean() * rate), y.shape[1])
     y += bandpass_filter(muscle_noise, l_cutoff=20, h_cutoff=60, sr=sr)
     return y
 
 
-def add_eye_noise(y, sr):
-    muscle_noise = np.random.uniform(0, 100, y.shape[1])
+def add_eye_noise(y, sr, rate):
+    muscle_noise = np.random.uniform(0, int(y.mean() * rate), y.shape[1])
     y += bandpass_filter(muscle_noise, l_cutoff=1, h_cutoff=3, sr=sr)
     return y
 
 
-def add_white_noise(y, sr):
-    y += np.random.randn(y.shape[1]) * 10
+def add_white_noise(y, rate):
+    y += np.random.randn(y.shape[1]) * y.mean() * rate
     return y
 
 
