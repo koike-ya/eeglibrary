@@ -98,6 +98,11 @@ class EEGDataSet(ManifestDataSet):
     def get_processed_size(self):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
+        print('preprocessed input info.')
+        print(f'max: {x.max()}')
+        print(f'min: {x.min()}')
+        print(f'mean: {x.mean()}')
+        print(f'std: {x.std()}')
         return x.size()
 
     def get_feature_size(self):

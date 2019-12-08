@@ -107,6 +107,10 @@ class Preprocessor:
             #     eeg.values[i] = stretch(eeg.values[i], rate=0.3)
             #     eeg.values[i] = shift_pitch(eeg.values[i], rate=0.3)
 
+        # if self.normalize:
+        #     # TODO Feature(time) axis normalization, Index(channel) axis normalization
+        #     eeg.values -= eeg.values.mean(axis=0)
+
         if self.to_1d:
             y = np.array([])
             if self.time_corr:
@@ -126,8 +130,7 @@ class Preprocessor:
 
         if self.normalize:
             # TODO Feature(time) axis normalization, Index(channel) axis normalization
-            raise NotImplementedError
-            # y = (y - y.mean()).div(y.std())
+            y = (y - y.mean()).div(y.std() + 0.001)
 
         if self.n_features:
             y = y.reshape(self.n_features, -1)
