@@ -28,15 +28,15 @@ def to_spect(eeg, window_size, window_stride, window):
 
 
 def time_and_freq_mask(data, rate):
-    w = np.random.uniform(0, data.shape[1]).astype(int)
+    w = int(np.random.uniform(0, data.shape[1]))
     tau = min(data.shape[1] - w, int(abs(np.random.normal(0, data.shape[1] * rate))))
     data[:, w:w + tau] = 0
 
-    w = np.random.uniform(0, data.shape[0]).astype(int)
+    w = int(np.random.uniform(0, data.shape[0]))
     tau = min(data.shape[0] - w, int(abs(np.random.normal(0, data.shape[0] * rate))))
     data[w:w + tau, :] = 0
 
-    return time_and_freq_mask()
+    return data
 
 
 def speedx(sound_array, factor):
@@ -74,19 +74,19 @@ def shift(y, n=500):
 
 
 def add_muscle_noise(y, sr, rate):
-    muscle_noise = np.random.uniform(0, int(y.mean() * rate), y.shape[1])
+    muscle_noise = np.random.uniform(0, int((y.max() - y.min()) * rate), y.shape[1])
     y += bandpass_filter(muscle_noise, l_cutoff=20, h_cutoff=60, sr=sr)
     return y
 
 
 def add_eye_noise(y, sr, rate):
-    muscle_noise = np.random.uniform(0, int(y.mean() * rate), y.shape[1])
+    muscle_noise = np.random.uniform(0, int((y.max() - y.min()) * rate), y.shape[1])
     y += bandpass_filter(muscle_noise, l_cutoff=1, h_cutoff=3, sr=sr)
     return y
 
 
 def add_white_noise(y, rate):
-    y += np.random.randn(y.shape[1]) * y.mean() * rate
+    y += np.random.randn(y.shape[1]) * (y.max() - y.min()) * rate
     return y
 
 

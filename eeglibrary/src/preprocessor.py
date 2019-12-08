@@ -28,7 +28,7 @@ def preprocess_args(parser):
     prep_parser.add_argument('--eye-noise', default=0.0, type=float)
     prep_parser.add_argument('--white-noise', default=0.0, type=float)
     prep_parser.add_argument('--shift-gain', default=0.0, type=float)
-    prep_parser.add_argument('--spec-augment', dest='spec_augment', action='store_true', help='spec-augment')
+    prep_parser.add_argument('--spec-augment', default=0.0, type=float)
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
@@ -91,7 +91,7 @@ class Preprocessor:
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
-        if self.phase == 'train':
+        if self.phase in ['train', 'val']:
             if self.cfg['muscle_noise']:
                 eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
             if self.cfg['eye_noise']:
@@ -117,8 +117,8 @@ class Preprocessor:
         elif self.spect:
             y = torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list))).to(torch.float32).transpose(1, 2)
 
-            if self.phase == 'train' and self.spec_augment:
-                y = time_and_freq_mask(y, rate=0.1)
+            if self.phase in ['train', 'val'] and self.spec_augment:
+                y = time_and_freq_mask(y, rate=self.spec_augment)
             # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
             # y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
         else:
