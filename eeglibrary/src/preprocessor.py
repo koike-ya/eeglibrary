@@ -36,7 +36,8 @@ def preprocess_args(parser):
 
 
 class Preprocessor:
-    def __init__(self, eeg_conf, to_1d=False, scaling_axis=None):
+    def __init__(self, eeg_conf, phase, to_1d=False, scaling_axis=None):
+        self.phase = phase
         self.sr = eeg_conf['sample_rate']
         self.l_cutoff = eeg_conf['low_cutoff']
         self.h_cutoff = eeg_conf['high_cutoff']
@@ -90,15 +91,16 @@ class Preprocessor:
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
-        if self.cfg['muscle_noise']:
-            eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
-        if self.cfg['eye_noise']:
-            eeg.values = add_eye_noise(eeg.values, eeg.sr, self.cfg['eye_noise'])
-        if self.cfg['white_noise']:
-            eeg.values = add_white_noise(eeg.values, self.cfg['white_noise'])
-        if self.cfg['shift_gain']:
-            rate = np.random.normal(1.0 - self.cfg['shift_gain'], 1.0 + self.cfg['shift_gain'])
-            eeg.values = shift_gain(eeg.values, rate=rate)
+        if self.phase == 'train':
+            if self.cfg['muscle_noise']:
+                eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
+            if self.cfg['eye_noise']:
+                eeg.values = add_eye_noise(eeg.values, eeg.sr, self.cfg['eye_noise'])
+            if self.cfg['white_noise']:
+                eeg.values = add_white_noise(eeg.values, self.cfg['white_noise'])
+            if self.cfg['shift_gain']:
+                rate = np.random.normal(1.0 - self.cfg['shift_gain'], 1.0 + self.cfg['shift_gain'])
+                eeg.values = shift_gain(eeg.values, rate=rate)
 
             # for i in range(len(eeg.channel_list)):
             #     eeg.values[i] = shift(eeg.values[i], eeg.sr * 5)
@@ -115,7 +117,7 @@ class Preprocessor:
         elif self.spect:
             y = torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list))).to(torch.float32).transpose(1, 2)
 
-            if self.spec_augment:
+            if self.phase == 'train' and self.spec_augment:
                 y = time_and_freq_mask(y, rate=0.1)
             # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
             # y = torch.from_numpy(createSpec(eeg.values, eeg.sr))

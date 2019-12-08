@@ -8,7 +8,7 @@ import torch
 
 
 class EEGDataSet(ManifestDataSet):
-    def __init__(self, manifest_path, data_conf, load_func, label_func, return_path=False):
+    def __init__(self, manifest_path, data_conf, load_func, label_func, phase, return_path=False):
         """
         data_conf: {
             'load_func': Function to load data from manifest correctly,
@@ -18,7 +18,7 @@ class EEGDataSet(ManifestDataSet):
 
         """
         super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=load_func, label_func=label_func)
-        self.preprocessor = Preprocessor(data_conf, data_conf['to_1d'], scaling_axis=None)
+        self.preprocessor = Preprocessor(data_conf, phase, data_conf['to_1d'], scaling_axis=None)
         # self.suffix = self.path_list[0][-4:]
         self.path_list = self.pack_paths(self.path_list, data_conf['duration'], data_conf['n_use_eeg'])
         self.return_path = return_path
