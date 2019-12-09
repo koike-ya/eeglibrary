@@ -29,6 +29,8 @@ def preprocess_args(parser):
     prep_parser.add_argument('--white-noise', default=0.0, type=float)
     prep_parser.add_argument('--shift-gain', default=0.0, type=float)
     prep_parser.add_argument('--spec-augment', default=0.0, type=float)
+    prep_parser.add_argument('--channel-wise-mean', action='store_true')
+    prep_parser.add_argument('--inter-channel-mean', action='store_true')
     prep_parser.add_argument('--mfcc', dest='mfcc', action='store_true', help='MFCC')
     prep_parser.add_argument('--to-1d', dest='to_1d', action='store_true', help='Preprocess inputs to 1 dimension')
 
@@ -91,6 +93,18 @@ class Preprocessor:
 
         eeg.values = bandpass_filter(eeg.values, self.l_cutoff, self.h_cutoff, eeg.sr)
 
+        n_channel = eeg.values.shape[0]
+
+        if self.cfg['channel_wise_mean']:
+            diff = eeg.values[:n_channel] - eeg.values[:n_channel].mean(axis=0)
+            eeg.values = np.vstack((eeg.values, diff))
+            eeg.channel_list += eeg.channel_list[:n_channel]
+
+        if self.cfg['inter_channel_mean']:
+            diff = (eeg.values[:n_channel].T - eeg.values[:n_channel].mean(axis=1).T).T
+            eeg.values = np.vstack((eeg.values, diff))
+            eeg.channel_list += eeg.channel_list[:n_channel]
+
         if self.phase in ['train', 'val']:
             if self.cfg['muscle_noise']:
                 eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
@@ -107,10 +121,6 @@ class Preprocessor:
             #     eeg.values[i] = stretch(eeg.values[i], rate=0.3)
             #     eeg.values[i] = shift_pitch(eeg.values[i], rate=0.3)
 
-        # if self.normalize:
-        #     # TODO Feature(time) axis normalization, Index(channel) axis normalization
-        #     eeg.values -= eeg.values.mean(axis=0)
-
         if self.to_1d:
             y = np.array([])
             if self.time_corr:
@@ -120,16 +130,15 @@ class Preprocessor:
                 y = torch.from_numpy(y)
         elif self.spect:
             y = torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list))).to(torch.float32).transpose(1, 2)
+            # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
 
             if self.phase in ['train', 'val'] and self.spec_augment:
                 y = time_and_freq_mask(y, rate=self.spec_augment)
-            # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
-            # y = torch.from_numpy(createSpec(eeg.values, eeg.sr))
+
         else:
             y = torch.from_numpy(eeg.values)  # channel x time
 
         if self.normalize:
-            # TODO Feature(time) axis normalization, Index(channel) axis normalization
             y = (y - y.mean()).div(y.std() + 0.001)
 
         if self.n_features:
