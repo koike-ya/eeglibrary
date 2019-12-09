@@ -17,14 +17,21 @@ def to_spect(eeg, window_size, window_stride, window):
     # STFT
     for i in range(len(eeg.channel_list)):
         y = eeg.values[i].astype(float)
-        # D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
-        #                  win_length=win_length, window=windows[window])
-        # spect, phase = librosa.magphase(D)
-        spect = scipy.signal.spectrogram(y, nfft=n_fft, fs=eeg.sr, return_onesided=True, noverlap=eeg.sr // 2)[2]
+        D = librosa.stft(y, n_fft=n_fft, hop_length=hop_length,
+                         win_length=win_length, window=windows[window])
+        spect, phase = librosa.magphase(D)
+        # spect = scipy.signal.spectrogram(y, nfft=n_fft, fs=eeg.sr, return_onesided=True, noverlap=eeg.sr // 2)[2]
         spect = torch.from_numpy(spect).to(torch.float32)
         spect_tensor = torch.cat((spect_tensor, spect.view(1, spect.size(0), -1)), 0)
 
     return spect_tensor
+
+
+def remove_power_noise(y, sr):
+    y = bandstop_filter(y, l_cutoff=117, h_cutoff=123, sr=sr)
+    y = bandstop_filter(y, l_cutoff=57, h_cutoff=63, sr=sr)
+    y = highpass_filter(y, l_cutoff=1, sr=sr)
+    return y
 
 
 def time_and_freq_mask(data, rate):
@@ -98,13 +105,25 @@ def butter_filter(y, cutoff, fs, btype='lowpass', order=5):
     return y
 
 
+def lowpass_filter(y, h_cutoff, sr):
+    return butter_filter(y, h_cutoff, sr, 'lowpass', order=6)
+
+
+def highpass_filter(y, l_cutoff, sr):
+    return butter_filter(y, l_cutoff, sr, 'highpass', order=6)
+
+
 def bandpass_filter(y, l_cutoff, h_cutoff, sr):
-    def _lowpass_filter(y):
-        return butter_filter(y, h_cutoff, sr, 'lowpass', order=4)
+    y = lowpass_filter(y, h_cutoff, sr)
+    y = highpass_filter(y, l_cutoff, sr)
+    return y
 
-    def _highpass_filter(y):
-        return butter_filter(y, l_cutoff, sr, 'highpass', order=4)
 
-    y = _lowpass_filter(y)
-    y = _highpass_filter(y)
+def bandstop_filter(y, l_cutoff, h_cutoff, sr, order=6):
+    nyq = 0.5 * sr
+    low = l_cutoff / nyq
+    high = h_cutoff / nyq
+
+    b, a = butter(order, [low, high], btype='bandstop')
+    y = lfilter(b, a, y)
     return y
