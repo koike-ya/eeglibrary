@@ -105,7 +105,7 @@ class Preprocessor:
             eeg.values = np.vstack((eeg.values, diff))
             eeg.channel_list += eeg.channel_list[:n_channel]
 
-        if self.phase in ['train', 'val']:
+        if self.phase in ['train']:
             if self.cfg['muscle_noise']:
                 eeg.values = add_muscle_noise(eeg.values, eeg.sr, self.cfg['muscle_noise'])
             if self.cfg['eye_noise']:
@@ -132,7 +132,7 @@ class Preprocessor:
             y = torch.from_numpy(createSpec(eeg.values, eeg.sr, len(eeg.channel_list))).to(torch.float32).transpose(1, 2)
             # y = to_spect(eeg, self.window_size, self.window_stride, self.window)    # channel x freq x time
 
-            if self.phase in ['train', 'val'] and self.spec_augment:
+            if self.spec_augment and self.phase in ['train']:
                 y = time_and_freq_mask(y, rate=self.spec_augment)
 
         else:
