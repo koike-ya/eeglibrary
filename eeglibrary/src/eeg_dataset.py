@@ -17,16 +17,18 @@ class EEGDataSet(ManifestDataSet):
         }
 
         """
-        super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=load_func, label_func=label_func)
+        super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=load_func, label_func=label_func,
+                                         phase=phase)
         self.preprocessor = Preprocessor(data_conf, phase, data_conf['to_1d'], scaling_axis=None)
         # self.suffix = self.path_list[0][-4:]
-        self.path_list = self.pack_paths(self.path_list, data_conf['duration'], data_conf['n_use_eeg'])
+        self.path_list = self.pack_paths(self.path_df, data_conf['duration'], data_conf['n_use_eeg'])
         self.return_path = return_path
         self.model_type = data_conf['model_type']
         self.processed_input_size = self.get_processed_size()
         self.batch_size = data_conf['batch_size']
         self.cache = data_conf['cache']
         self.cached_idx = set()
+        self.get_processed_size(phase=phase, info=True)
 
     def __getitem__(self, idx):
         eeg_paths, label = self.path_list[idx]
@@ -65,23 +67,23 @@ class EEGDataSet(ManifestDataSet):
             x = x.reshape(self.processed_input_size[0], -1, self.processed_input_size[2])
         return x
 
-    def pack_paths(self, path_list, duration, n_use_eeg):
-        one_eeg = EEG.load_pkl(path_list[0])
+    def pack_paths(self, path_df, duration, n_use_eeg):
+        one_eeg = EEG.load_pkl(path_df.iloc[0, 0])
         len_sec = one_eeg.len_sec
         if not n_use_eeg:
             n_use_eeg = int(duration / len_sec)
             assert n_use_eeg == duration / len_sec, f'Duration must be common multiple of {len_sec}'
 
-        label_list = [self.label_func(path) for path in self.path_list]
+        label_list = self.path_df.apply(self.label_func, axis=1)
 
         if n_use_eeg == 1:
-            return [([p], label) for p, label in zip(path_list, label_list)]
+            return [([p], label) for p, label in zip(path_df.values[:, 0], label_list)]
 
         packed_path_label_list = []
-        for i in range(0, len(path_list), n_use_eeg):
-            if i + n_use_eeg >= len(path_list):
+        for i in range(0, len(path_df), n_use_eeg):
+            if i + n_use_eeg >= len(path_df):
                 continue
-            paths, labels = path_list[i:i + n_use_eeg], label_list[i:i + n_use_eeg]
+            paths, labels = path_df.iloc[i:i + n_use_eeg, 0], label_list[i:i + n_use_eeg]
             assert len(paths) == n_use_eeg
 
             # TODO ソフトラベルを作るのもあり。
@@ -95,14 +97,15 @@ class EEGDataSet(ManifestDataSet):
     def get_labels(self):
         return [label for paths, label in self.path_list]
 
-    def get_processed_size(self):
+    def get_processed_size(self, phase='train', info=False):
         eeg = parse_eeg(self.path_list[0][0])
         x = self.preprocessor.preprocess(eeg)
-        print('preprocessed input info.')
-        print(f'max: {x.max()}')
-        print(f'min: {x.min()}')
-        print(f'mean: {x.mean()}')
-        print(f'std: {x.std()}')
+        if info:
+            print(f'{phase} preprocessed feature info.')
+            print(f'max: {x.max()}')
+            print(f'min: {x.min()}')
+            print(f'mean: {x.mean()}')
+            print(f'std: {x.std()}')
         return x.size()
 
     def get_feature_size(self):

@@ -8,9 +8,6 @@ class EEGDataLoader(WrapperDataLoader):
         self.seq_len = self.dataset.get_seq_len()
         self.model_type = model_type
 
-    def get_input_size(self):
-        return self.dataset.get_feature_size()
-
     def get_image_size(self):
         return self.dataset.get_image_size()
 
