@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 from eeglibrary.src import EEG
 from eeglibrary.src.eeg_parser import parse_eeg
-from eeglibrary.src.preprocessor import Preprocessor
+from eeglibrary.src.preprocessor import EEGPreprocessor
 from ml.src.dataset import ManifestDataSet
 import torch
 
@@ -19,7 +19,7 @@ class EEGDataSet(ManifestDataSet):
         """
         super(EEGDataSet, self).__init__(manifest_path, data_conf, load_func=load_func, label_func=label_func,
                                          phase=phase)
-        self.preprocessor = Preprocessor(data_conf, phase, data_conf['to_1d'], scaling_axis=None)
+        self.preprocessor = EEGPreprocessor(data_conf, phase, data_conf['to_1d'], scaling_axis=None)
         # self.suffix = self.path_list[0][-4:]
         self.path_list = self.pack_paths(self.path_df, data_conf['duration'], data_conf['n_use_eeg'])
         self.return_path = return_path
@@ -44,7 +44,7 @@ class EEGDataSet(ManifestDataSet):
             # import numpy as np
             # eeg.values = np.nan_to_num(eeg.values)
             try:
-                x = self.preprocessor.preprocess(eeg_)
+                x = self.preprocessor.preprocess(eeg_, label)
             except np.linalg.LinAlgError as e:
                 print(e)
                 return self.__getitem__(idx + 1)
