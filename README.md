@@ -1,5 +1,15 @@
 # 環境構築
 
+## librosa のトラブルシューティング
+From here: https://stackoverflow.com/questions/30219360/seewave-install-error-sndfile-h-file-not-found-for-r-3-2-0-under-osx-yose/30980601#30980601
+```
+On linux it is sufficient to install libsndfile library, for example with
+sudo apt-get install libsndfile1-dev
+On OS X just do:
+brew install libsndfile
+```
+
+
 ## Light GBMのインストール
 ### cmake
 ```
@@ -19,13 +29,3 @@ make -j4
 sudo apt-get update && sudo apt-get install build-essential
 ```
 
-
-## FabIOのインストール
-サイト[https://github.com/silx-kit/fabio/releases/tag/v0.9.0]からlatestバージョンをダウンロードして展開
-fabioのディレクトリに移動して、以下を実行
-```
-sudo pip install -r ci/requirements_travis.txt --trusted-host www.silx.org
-python setup.py build
-python setup.py test
-sudo pip install .
-```

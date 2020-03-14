@@ -2,14 +2,15 @@ pandas
 numpy
 matplotlib
 scipy
-https://download.pytorch.org/whl/cu100/torch-1.0.1.post2-cp36-cp36m-linux_x86_64.whl
+torch==1.0.1
 torchvision
 glibc
 tqdm
 librosa
 tensorboardX
-tensorflow
+tensorflow-gpu
 tensorboard
+keras
 lightgbm
 xgboost
 pyedflib
