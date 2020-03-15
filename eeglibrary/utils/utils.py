@@ -3,11 +3,12 @@ from __future__ import print_function, division
 from pathlib import Path
 
 import pandas as pd
-from eeglibrary.src import EEGDataSet, EEGDataLoader
-from eeglibrary.src.eeg_loader import from_mat
-from ml.models.toolbox import *
+from ml.models.ml_models.toolbox import *
 from ml.src.dataloader import make_weights_for_balanced_classes
 from torch.utils.data.sampler import WeightedRandomSampler
+
+from eeglibrary.src import EEGDataSet, EEGDataLoader
+from eeglibrary.src.eeg_loader import from_mat
 
 
 def common_eeg_setup(eeg_path='', mat_col=''):

@@ -1,10 +1,9 @@
-import numpy as np
-import torch
-from ml.src.signal_processor import *
-from ml.src.preprocessor import preprocess_args, Preprocessor
+from ml.preprocess.preprocessor import preprocess_args, Preprocessor
+from ml.preprocess.signal_processor import *
+from sklearn import preprocessing
+
 from eeglibrary.src.chb_mit_cnn_spectrogram import createSpec
 from eeglibrary.src.signal_processor import *
-from sklearn import preprocessing
 
 
 def eeg_preprocess_args(parser):

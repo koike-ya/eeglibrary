@@ -1,0 +1,3 @@
+[submodule "ml_pkg"]
+	path = ml_pkg
+	url = git@github.com:Tomoya-K-0504/ml_dl_pkg.git
