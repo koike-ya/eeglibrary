@@ -1,6 +1,5 @@
 import argparse
 import itertools
-import json
 import logging
 import pprint
 from copy import deepcopy
@@ -16,6 +15,8 @@ from const import SUBJECTS, LABELS_2
 from joblib import Parallel, delayed
 from ml.src.dataset import ManifestWaveDataSet
 from ml.tasks.base_experiment import typical_train, base_expt_args, typical_experiment
+from ml.utils.notify_slack import notify_slack
+from ml.utils.utils import dump_dict
 from scipy.stats import stats
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix
 
@@ -41,8 +42,6 @@ def load_func(row):
 
 def set_inner_subj_data_paths(expt_dir, expt_conf, test_user_ids) -> Dict:
     manifest_df = pd.read_csv(expt_conf['manifest_path'], header=None)
-
-
 
     # This split rate has no effect if you specify group k-fold. Train and val set will be combined on CV
     train_data_df.iloc[:int(len(train_data_df) // 2)].to_csv(expt_dir / 'train_data.csv', index=False, header=None)
@@ -86,11 +85,6 @@ def get_inter_cv_groups(expt_conf, test_user_ids: List[int]):
     return groups
 
 
-def dump_dict(path, dict_):
-    with open(path, 'w') as f:
-        json.dump(dict_, f, indent=4)
-
-
 def main(expt_conf, expt_dir, hyperparameters, typical_train_func, test_user_ids):
     if expt_conf['expt_id'] == 'timestamp':
         expt_conf['expt_id'] = dt.today().strftime('%Y-%m-%d_%H:%M')
@@ -99,14 +93,9 @@ def main(expt_conf, expt_dir, hyperparameters, typical_train_func, test_user_ids
                         filename=expt_dir / 'expt.log')
 
     expt_conf['class_names'] = [0, 1]
-    if expt_conf['train_manager'] == 'nn':
-        metrics_names = {'train': ['loss', 'uar'],
-                         'val': ['loss', 'uar'],
-                         'test': ['loss', 'uar']}
-    else:
-        metrics_names = {'train': ['uar'],
-                         'val': ['uar'],
-                         'test': ['uar']}
+    metrics_names = {'train': ['loss', 'uar'],
+                     'val': ['loss', 'uar'],
+                     'test': ['loss', 'uar']}
 
     dataset_cls = ManifestWaveDataSet
     if expt_conf['inter_subj']:
@@ -135,7 +124,7 @@ def main(expt_conf, expt_dir, hyperparameters, typical_train_func, test_user_ids
         expt_conf['log_id'] = f"{'_'.join([str(p).replace('/', '-') for p in pattern])}"
         # TODO cv時はmean と stdをtrainとvalの分割後に求める必要がある
         with mlflow.start_run():
-            result_series, val_pred = typical_train_func(expt_conf, load_func, label_func, process_func, dataset_cls, groups)
+            result_series, val_pred, _ = typical_train_func(expt_conf, load_func, label_func, process_func, dataset_cls, groups)
 
             mlflow.log_params({hyperparameter: value for hyperparameter, value in zip(hyperparameters.keys(), pattern)})
             mlflow.log_artifacts(expt_dir)
@@ -171,7 +160,7 @@ def main(expt_conf, expt_dir, hyperparameters, typical_train_func, test_user_ids
             expt_conf[param] = best_pattern[i]
         dump_dict(expt_dir / 'best_parameters.txt', {p: v for p, v in zip(hyperparameters.keys(), best_pattern)})
 
-        metrics, pred_dict_list = typical_experiment(expt_conf, load_func, label_func, process_func, dataset_cls,
+        metrics, pred_dict_list, _ = typical_experiment(expt_conf, load_func, label_func, process_func, dataset_cls,
                                                      groups)
 
         if expt_conf['return_prob']:
@@ -198,9 +187,56 @@ if __name__ == '__main__':
     console.setLevel(logging.DEBUG)
     logging.getLogger("ml").addHandler(console)
 
-    hyperparameters = {
-        'lr': [0.01],
-    }
+    if expt_conf['model_type'] == 'cnn':
+        hyperparameters = {
+            'model_type': ['cnn'],
+            'window_size': [1.0],
+            'window_stride': [0.5],
+            'lr': [1e-3, 1e-4, 1e-5],
+        }
+    elif expt_conf['model_type'] == 'logmel_cnn':
+        hyperparameters = {
+            'lr': [1e-3],
+            'batch_size': [16],
+            'model_type': ['logmel_cnn'],
+            'transform': ['logmel'],
+            'loss_func': ['ce'],
+            'window_size': [0.5],
+            'window_stride': [0.1],
+            'epoch_rate': [1.0],
+            'sample_balance': ['same'],
+        }
+    elif expt_conf['model_type'] == 'cnn_rnn':
+        hyperparameters = {
+            'lr': [1e-3, 1e-4, 1e-5],
+            'window_size': [0.5],
+            'window_stride': [0.1],
+            'rnn_type': [expt_conf['rnn_type']],
+            'bidirectional': [True],
+            'rnn_n_layers': [1],
+            'rnn_hidden_size': [10],
+        }
+    elif expt_conf['model_type'] == 'rnn':
+        hyperparameters = {
+            'bidirectional': [True, False],
+            'rnn_type': ['lstm', 'gru'],
+            'rnn_n_layers': [1, 2],
+            'rnn_hidden_size': [10, 50],
+            'transform': [None],
+            'lr': [1e-3, 1e-4, 1e-5],
+        }
+    else:
+        hyperparameters = {
+            'lr': [1e-4],
+            'batch_size': [16],
+            'model_type': [expt_conf['model_type']],
+            'transform': ['logmel'],
+            'loss_func': ['ce'],
+            'epoch_rate': [1.0],
+            'sample_balance': ['same'],
+        }
+
+    hyperparameters['model_type'] = [expt_conf['model_type']]
 
     # manifest_df = pd.read_csv(expt_conf['manifest_path'], header=None)
     # manifest_df = manifest_df[manifest_df.apply(lambda x: x[0].split('_')[-1][:-4], axis=1) != 'ictal']
@@ -223,6 +259,12 @@ if __name__ == '__main__':
         # break
 
     # aggregate(expt_conf)
+
+    cfg = dict(
+        body='https://www.notion.so/c2fad3ade9d941588335cb56eafaf27a',
+        webhook_url='https://hooks.slack.com/services/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'
+    )
+    notify_slack(cfg)
 
     if expt_conf['expt_id'] == 'debug':
         import shutil
